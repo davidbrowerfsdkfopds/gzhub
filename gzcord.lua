@@ -228,6 +228,144 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 
+-- Loading Screen Overlay
+local loadingOverlay = Instance.new("Frame")
+loadingOverlay.Name = "LoadingOverlay"
+loadingOverlay.BackgroundColor3 = Color3.fromRGB(32, 34, 37)
+loadingOverlay.BackgroundTransparency = 0.1
+loadingOverlay.BorderSizePixel = 0
+loadingOverlay.Size = UDim2.new(1, 0, 1, 0)
+loadingOverlay.Position = UDim2.new(0, 0, 0, 0)
+loadingOverlay.ZIndex = 1000
+loadingOverlay.Parent = windowFrame
+
+local loadingCorner = Instance.new("UICorner")
+loadingCorner.CornerRadius = UDim.new(0, 12)
+loadingCorner.Parent = loadingOverlay
+
+-- Blur effect for loading screen
+local loadingBlur = Instance.new("Frame")
+loadingBlur.Name = "LoadingBlur"
+loadingBlur.BackgroundColor3 = Color3.fromRGB(47, 49, 54)
+loadingBlur.BackgroundTransparency = 0.2
+loadingBlur.BorderSizePixel = 0
+loadingBlur.Size = UDim2.new(1, 0, 1, 0)
+loadingBlur.Position = UDim2.new(0, 0, 0, 0)
+loadingBlur.Parent = loadingOverlay
+
+local blurCorner = Instance.new("UICorner")
+blurCorner.CornerRadius = UDim.new(0, 12)
+blurCorner.Parent = loadingBlur
+
+-- Loading text
+local loadingText = Instance.new("TextLabel")
+loadingText.Name = "LoadingText"
+loadingText.BackgroundTransparency = 1
+loadingText.Size = UDim2.new(0, 400, 0, 60)
+loadingText.Position = UDim2.new(0.5, -200, 0.5, -30)
+loadingText.Font = Enum.Font.SourceSansBold
+loadingText.Text = "🎯 Injecting u with gzness..."
+loadingText.TextColor3 = Color3.fromRGB(114, 137, 218)
+loadingText.TextSize = 24
+loadingText.TextXAlignment = Enum.TextXAlignment.Center
+loadingText.TextYAlignment = Enum.TextYAlignment.Center
+loadingText.Parent = loadingOverlay
+
+-- Loading dots animation
+local loadingDots = Instance.new("TextLabel")
+loadingDots.Name = "LoadingDots"
+loadingDots.BackgroundTransparency = 1
+loadingDots.Size = UDim2.new(0, 100, 0, 30)
+loadingDots.Position = UDim2.new(0.5, -50, 0.5, 20)
+loadingDots.Font = Enum.Font.SourceSansBold
+loadingDots.Text = "..."
+loadingDots.TextColor3 = Color3.fromRGB(255, 255, 255)
+loadingDots.TextSize = 18
+loadingDots.TextXAlignment = Enum.TextXAlignment.Center
+loadingDots.TextYAlignment = Enum.TextYAlignment.Center
+loadingDots.Parent = loadingOverlay
+
+-- Animate loading dots
+spawn(function()
+    local dots = {"", ".", "..", "..."}
+    local index = 1
+    while loadingOverlay.Parent do
+        loadingDots.Text = dots[index]
+        index = index + 1
+        if index > #dots then index = 1 end
+        wait(0.5)
+    end
+end)
+
+-- Progress bar
+local progressBarBG = Instance.new("Frame")
+progressBarBG.Name = "ProgressBarBG"
+progressBarBG.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+progressBarBG.BorderSizePixel = 0
+progressBarBG.Size = UDim2.new(0, 300, 0, 6)
+progressBarBG.Position = UDim2.new(0.5, -150, 0.5, 60)
+progressBarBG.Parent = loadingOverlay
+
+local progressBarCorner = Instance.new("UICorner")
+progressBarCorner.CornerRadius = UDim.new(0, 3)
+progressBarCorner.Parent = progressBarBG
+
+local progressBar = Instance.new("Frame")
+progressBar.Name = "ProgressBar"
+progressBar.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
+progressBar.BorderSizePixel = 0
+progressBar.Size = UDim2.new(0, 0, 1, 0)
+progressBar.Position = UDim2.new(0, 0, 0, 0)
+progressBar.Parent = progressBarBG
+
+local progressCorner = Instance.new("UICorner")
+progressCorner.CornerRadius = UDim.new(0, 3)
+progressCorner.Parent = progressBar
+
+-- Animate progress bar
+spawn(function()
+    local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(progressBar, tweenInfo, {
+        Size = UDim2.new(1, 0, 1, 0)
+    })
+    tween:Play()
+    
+    -- Remove loading screen after animation
+    tween.Completed:Connect(function()
+        wait(0.5)
+        local fadeInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local fadeTween = TweenService:Create(loadingOverlay, fadeInfo, {
+            BackgroundTransparency = 1
+        })
+        local fadeBlurTween = TweenService:Create(loadingBlur, fadeInfo, {
+            BackgroundTransparency = 1
+        })
+        local fadeTextTween = TweenService:Create(loadingText, fadeInfo, {
+            TextTransparency = 1
+        })
+        local fadeDotseTween = TweenService:Create(loadingDots, fadeInfo, {
+            TextTransparency = 1
+        })
+        local fadeProgressBGTween = TweenService:Create(progressBarBG, fadeInfo, {
+            BackgroundTransparency = 1
+        })
+        local fadeProgressTween = TweenService:Create(progressBar, fadeInfo, {
+            BackgroundTransparency = 1
+        })
+        
+        fadeTween:Play()
+        fadeBlurTween:Play()
+        fadeTextTween:Play()
+        fadeDotseTween:Play()
+        fadeProgressBGTween:Play()
+        fadeProgressTween:Play()
+        
+        fadeTween.Completed:Connect(function()
+            loadingOverlay:Destroy()
+        end)
+    end)
+end)
+
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.BackgroundTransparency = 1
@@ -358,6 +496,10 @@ local function isTargetValid(target)
     return target and target.Character and target.Character:FindFirstChild("Head") and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 and hasLineOfSight(target)
 end
 
+local function isTargetValidForLock(target)
+    return target and target.Character and target.Character:FindFirstChild("Head") and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0
+end
+
 local function isAimbotKeyPressed()
     if aimbotKeybind == "Right Click" then
         return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
@@ -383,7 +525,7 @@ local function startAimbot()
         
 if aimbotEnabled and isAimbotKeyPressed() then
 
-            if not currentTarget or not isTargetValid(currentTarget) or not isWithinFOV(currentTarget) then
+            if not currentTarget or not isTargetValidForLock(currentTarget) or not isWithinFOV(currentTarget) then
                 local newTarget = getClosestPlayer()
                 if newTarget ~= currentTarget then
                     currentTarget = newTarget
@@ -1076,13 +1218,23 @@ end
 
 
 local function createDropdown(parent, label, options, default, callback)
+    -- Validate inputs
+    if not parent or not label or not options or #options == 0 then
+        warn("createDropdown: Invalid parameters provided")
+        return nil
+    end
+    
     local selectedValue = default or options[1]
+    
+    -- Main container frame
     local frame = Create("Frame", {
         Name = label .. "Dropdown",
         Parent = parent,
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 30),
     })
+    
+    -- Layout for horizontal arrangement
     Create("UIListLayout", {
         Parent = frame,
         FillDirection = Enum.FillDirection.Horizontal,
@@ -1090,6 +1242,8 @@ local function createDropdown(parent, label, options, default, callback)
         VerticalAlignment = Enum.VerticalAlignment.Center,
         Padding = UDim.new(0, 8),
     })
+    
+    -- Label
     Create("TextLabel", {
         Parent = frame,
         BackgroundTransparency = 1,
@@ -1102,60 +1256,230 @@ local function createDropdown(parent, label, options, default, callback)
         TextYAlignment = Enum.TextYAlignment.Center,
         LayoutOrder = 1,
     })
+    
+    -- Dropdown button
     local dropdown = Create("TextButton", {
         Parent = frame,
-        BackgroundColor3 = Color3.fromRGB(47, 49, 54),
+        BackgroundColor3 = Color3.fromRGB(54, 57, 63),
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(72, 75, 81),
         Size = UDim2.new(0.5, -8, 0, 26),
         AutoButtonColor = false,
         Text = selectedValue,
-        Font = Enum.Font.SourceSans,
-        TextColor3 = Color3.fromRGB(220, 221, 222),
+        Font = Enum.Font.SourceSansSemibold,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
         TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left,
         LayoutOrder = 2,
     })
-    Create("UICorner", { Parent = dropdown, CornerRadius = UDim.new(0, 4) })
+    Create("UICorner", { Parent = dropdown, CornerRadius = UDim.new(0, 6) })
+    Create("UIPadding", { Parent = dropdown, PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 30) })
     
-    local dropdownList = Create("Frame", {
+    -- Dropdown arrow
+    local arrow = Create("TextLabel", {
         Parent = dropdown,
-        BackgroundColor3 = Color3.fromRGB(47, 49, 54),
-        Size = UDim2.new(1, 0, 0, #options * 26),
-        Position = UDim2.new(0, 0, 1, 2),
-        Visible = false,
-        ZIndex = 10,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 20, 1, 0),
+        Position = UDim2.new(1, -25, 0, 0),
+        Text = "▼",
+        Font = Enum.Font.SourceSansBold,
+        TextColor3 = Color3.fromRGB(185, 187, 190),
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextYAlignment = Enum.TextYAlignment.Center,
     })
-    Create("UICorner", { Parent = dropdownList, CornerRadius = UDim.new(0, 4) })
-    Create("UIListLayout", { Parent = dropdownList, SortOrder = Enum.SortOrder.LayoutOrder })
     
+    -- Dropdown list container
+    local dropdownList = Create("Frame", {
+        Parent = frame,
+        BackgroundColor3 = Color3.fromRGB(54, 57, 63),
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(114, 137, 218),
+        Size = UDim2.new(0.5, -8, 0, math.max(#options * 24 + 8, 32)),
+        Position = UDim2.new(0.5, -8, 1, 2),
+        Visible = false,
+        ZIndex = 1000,
+    })
+    Create("UICorner", { Parent = dropdownList, CornerRadius = UDim.new(0, 6) })
+    Create("UIPadding", { Parent = dropdownList, PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) })
+    Create("UIListLayout", { Parent = dropdownList, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) })
+    
+    -- Shadow effect
+    local shadow = Create("Frame", {
+        Parent = frame,
+        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+        BackgroundTransparency = 0.7,
+        BorderSizePixel = 0,
+        Size = UDim2.new(0.5, -4, 0, math.max(#options * 24 + 12, 36)),
+        Position = UDim2.new(0.5, -6, 1, 4),
+        Visible = false,
+        ZIndex = 999,
+    })
+    Create("UICorner", { Parent = shadow, CornerRadius = UDim.new(0, 6) })
+    
+    -- Create option buttons
+    local optionButtons = {}
     for i, option in ipairs(options) do
         local optionButton = Create("TextButton", {
             Parent = dropdownList,
-            BackgroundColor3 = Color3.fromRGB(47, 49, 54),
-            Size = UDim2.new(1, 0, 0, 26),
+            BackgroundColor3 = Color3.fromRGB(54, 57, 63),
+            BorderSizePixel = 0,
+            Size = UDim2.new(1, -8, 0, 22),
             AutoButtonColor = false,
             Text = option,
-            Font = Enum.Font.SourceSans,
-            TextColor3 = Color3.fromRGB(185, 187, 190),
+            Font = Enum.Font.SourceSansSemibold,
+            TextColor3 = Color3.fromRGB(220, 221, 222),
             TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
             LayoutOrder = i,
         })
+        Create("UICorner", { Parent = optionButton, CornerRadius = UDim.new(0, 4) })
+        Create("UIPadding", { Parent = optionButton, PaddingLeft = UDim.new(0, 8) })
+        
+        optionButtons[option] = optionButton
+        
+        -- Set initial selection state
+        if option == selectedValue then
+            optionButton.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
+            optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
+        
+        -- Hover effects
         optionButton.MouseEnter:Connect(function()
-            optionButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-        end)
-        optionButton.MouseLeave:Connect(function()
-            optionButton.BackgroundColor3 = Color3.fromRGB(47, 49, 54)
-        end)
-        optionButton.MouseButton1Click:Connect(function()
-            selectedValue = option
-            dropdown.Text = option
-            dropdownList.Visible = false
-            if callback then
-                callback(option)
+            if option ~= selectedValue then
+                optionButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+                optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
             end
+        end)
+        
+        optionButton.MouseLeave:Connect(function()
+            if option ~= selectedValue then
+                optionButton.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+                optionButton.TextColor3 = Color3.fromRGB(220, 221, 222)
+            end
+        end)
+        
+        -- Click handler
+        optionButton.MouseButton1Click:Connect(function()
+            -- Update selection
+            if selectedValue ~= option then
+                -- Reset previous selection
+                if optionButtons[selectedValue] then
+                    optionButtons[selectedValue].BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+                    optionButtons[selectedValue].TextColor3 = Color3.fromRGB(220, 221, 222)
+                end
+                
+                -- Set new selection
+                selectedValue = option
+                dropdown.Text = option
+                optionButton.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
+                optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                
+                -- Call callback
+                if callback then
+                    pcall(callback, option)
+                end
+            end
+            
+            -- Close dropdown
+            dropdownList.Visible = false
+            shadow.Visible = false
+            arrow.Text = "▼"
+            arrow.TextColor3 = Color3.fromRGB(185, 187, 190)
+            dropdown.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+            dropdown.BorderColor3 = Color3.fromRGB(72, 75, 81)
         end)
     end
     
+    -- Hover effects for main dropdown
+    dropdown.MouseEnter:Connect(function()
+        if not dropdownList.Visible then
+            dropdown.BackgroundColor3 = Color3.fromRGB(64, 68, 75)
+            dropdown.BorderColor3 = Color3.fromRGB(114, 137, 218)
+            arrow.TextColor3 = Color3.fromRGB(114, 137, 218)
+        end
+    end)
+    
+    dropdown.MouseLeave:Connect(function()
+        if not dropdownList.Visible then
+            dropdown.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+            dropdown.BorderColor3 = Color3.fromRGB(72, 75, 81)
+            arrow.TextColor3 = Color3.fromRGB(185, 187, 190)
+        end
+    end)
+    
+    -- Main dropdown click handler
     dropdown.MouseButton1Click:Connect(function()
-        dropdownList.Visible = not dropdownList.Visible
+        local isOpening = not dropdownList.Visible
+        
+        dropdownList.Visible = isOpening
+        shadow.Visible = isOpening
+        
+        if isOpening then
+            -- Opening dropdown
+            dropdown.BackgroundColor3 = Color3.fromRGB(64, 68, 75)
+            dropdown.BorderColor3 = Color3.fromRGB(114, 137, 218)
+            arrow.TextColor3 = Color3.fromRGB(114, 137, 218)
+            arrow.Text = "▲"
+            
+            -- Ensure proper selection highlighting
+            for option, button in pairs(optionButtons) do
+                if option == selectedValue then
+                    button.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
+                    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                else
+                    button.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+                    button.TextColor3 = Color3.fromRGB(220, 221, 222)
+                end
+            end
+        else
+            -- Closing dropdown
+            dropdown.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+            dropdown.BorderColor3 = Color3.fromRGB(72, 75, 81)
+            arrow.TextColor3 = Color3.fromRGB(185, 187, 190)
+            arrow.Text = "▼"
+        end
+    end)
+    
+    -- Close dropdown function
+    local function closeDropdown()
+        if dropdownList.Visible then
+            dropdownList.Visible = false
+            shadow.Visible = false
+            dropdown.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+            dropdown.BorderColor3 = Color3.fromRGB(72, 75, 81)
+            arrow.TextColor3 = Color3.fromRGB(185, 187, 190)
+            arrow.Text = "▼"
+        end
+    end
+    
+    -- Outside click detection
+    local connection
+    connection = UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and dropdownList.Visible then
+            local mousePos = UserInputService:GetMouseLocation()
+            
+            -- Check if click is outside dropdown elements
+            local function isPointInFrame(point, frame)
+                local pos = frame.AbsolutePosition
+                local size = frame.AbsoluteSize
+                return point.X >= pos.X and point.X <= pos.X + size.X and
+                       point.Y >= pos.Y and point.Y <= pos.Y + size.Y
+            end
+            
+            if not isPointInFrame(mousePos, dropdown) and not isPointInFrame(mousePos, dropdownList) then
+                closeDropdown()
+            end
+        end
+    end)
+    
+    -- Clean up connection when frame is destroyed
+    frame.AncestryChanged:Connect(function()
+        if not frame.Parent then
+            if connection then
+                connection:Disconnect()
+            end
+        end
     end)
     
     return frame
@@ -1468,7 +1792,138 @@ createToggle(aimbotContent, "Aimbot", function(enabled)
         stopAimbot()
     end
 end)
-createDropdown(aimbotContent, "Keybind", {"Right Click", "Q", "Ctrl"}, "Right Click", function(value)
+
+local function createKeybindPicker(parent, label, default, callback)
+    local selectedKey = default or "Right Click"
+    local waitingForKey = false
+
+    local frame = Create("Frame", {
+        Name = label .. "KeybindPicker",
+        Parent = parent,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 30),
+    })
+    Create("UIListLayout", {
+        Parent = frame,
+        FillDirection = Enum.FillDirection.Horizontal,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        Padding = UDim.new(0, 8),
+    })
+    Create("TextLabel", {
+        Parent = frame,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0.5, 0, 1, 0),
+        Font = Enum.Font.SourceSansSemibold,
+        Text = label,
+        TextColor3 = Color3.fromRGB(220, 221, 222),
+        TextSize = 16,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        LayoutOrder = 1,
+    })
+    local keyButton = Create("TextButton", {
+        Parent = frame,
+        BackgroundColor3 = Color3.fromRGB(54, 57, 63),
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(72, 75, 81),
+        Size = UDim2.new(0.5, -38, 0, 26),
+        AutoButtonColor = false,
+        Text = selectedKey,
+        Font = Enum.Font.SourceSansSemibold,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        LayoutOrder = 2,
+    })
+    Create("UICorner", { Parent = keyButton, CornerRadius = UDim.new(0, 6) })
+    Create("UIPadding", { Parent = keyButton, PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) })
+    
+    -- Quick Right Click button
+    local rightClickButton = Create("TextButton", {
+        Parent = frame,
+        BackgroundColor3 = Color3.fromRGB(114, 137, 218),
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(114, 137, 218),
+        Size = UDim2.new(0, 26, 0, 26),
+        AutoButtonColor = false,
+        Text = "🖱️",
+        Font = Enum.Font.SourceSansBold,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        LayoutOrder = 3,
+    })
+    Create("UICorner", { Parent = rightClickButton, CornerRadius = UDim.new(0, 6) })
+    
+    -- Right click button functionality
+    rightClickButton.MouseButton1Click:Connect(function()
+        if not waitingForKey then
+            selectedKey = "Right Click"
+            keyButton.Text = "Right Click"
+            keyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            keyButton.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+            if callback then
+                callback("Right Click")
+            end
+        end
+    end)
+    
+    -- Right click button hover effects
+    rightClickButton.MouseEnter:Connect(function()
+        rightClickButton.BackgroundColor3 = Color3.fromRGB(134, 157, 238)
+        rightClickButton.BorderColor3 = Color3.fromRGB(134, 157, 238)
+    end)
+    
+    rightClickButton.MouseLeave:Connect(function()
+        rightClickButton.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
+        rightClickButton.BorderColor3 = Color3.fromRGB(114, 137, 218)
+    end)
+
+    keyButton.MouseButton1Click:Connect(function()
+        if not waitingForKey then
+            waitingForKey = true
+            keyButton.Text = "Press any key..."
+            keyButton.TextColor3 = Color3.fromRGB(114, 137, 218)
+            keyButton.BackgroundColor3 = Color3.fromRGB(64, 68, 75)
+        end
+    end)
+
+    local inputConn
+    inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if waitingForKey and not gameProcessed then
+            local keyName = nil
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                keyName = tostring(input.KeyCode.Name)
+            elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+                keyName = "Left Click"
+            elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+                keyName = "Right Click"
+            elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+                keyName = "Middle Click"
+            end
+            if keyName then
+                selectedKey = keyName
+                keyButton.Text = keyName
+                keyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                keyButton.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+                waitingForKey = false
+                if callback then
+                    callback(keyName)
+                end
+            end
+        end
+    end)
+    frame.AncestryChanged:Connect(function()
+        if not frame.Parent and inputConn then
+            inputConn:Disconnect()
+        end
+    end)
+    return frame
+end
+
+createKeybindPicker(aimbotContent, "Keybind", aimbotKeybind, function(value)
     aimbotKeybind = value
 end)
 createSlider(aimbotContent, "Smoothness", 0, 100, 80, function(value)
