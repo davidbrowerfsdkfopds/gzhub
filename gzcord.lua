@@ -14,6 +14,8 @@ local aimbotEnabled = false
 local aimbotSmoothness = 80
 local aimbotPrediction = 10
 local aimbotKeybind = "Right Click"
+local aimbotToggleMode = false
+local aimbotToggleActive = false
 local aimbotConnection = nil
 local currentTarget = nil
 
@@ -501,14 +503,18 @@ local function isTargetValidForLock(target)
 end
 
 local function isAimbotKeyPressed()
-    if aimbotKeybind == "Right Click" then
-        return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-    elseif aimbotKeybind == "Q" then
-        return UserInputService:IsKeyDown(Enum.KeyCode.Q)
-    elseif aimbotKeybind == "Ctrl" then
-        return UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
+    if aimbotToggleMode then
+        return aimbotToggleActive
+    else
+        if aimbotKeybind == "Right Click" then
+            return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+        elseif aimbotKeybind == "Q" then
+            return UserInputService:IsKeyDown(Enum.KeyCode.Q)
+        elseif aimbotKeybind == "Ctrl" then
+            return UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
+        end
+        return false
     end
-    return false
 end
 
 local function startAimbot()
@@ -559,6 +565,49 @@ local function stopAimbot()
         fovCircle = nil
     end
 end
+
+-- Toggle key detection for aimbot
+local lastKeyState = {}
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed or not aimbotEnabled or not aimbotToggleMode then return end
+    
+    local keyPressed = false
+    local keyName = ""
+    
+    if aimbotKeybind == "Right Click" and input.UserInputType == Enum.UserInputType.MouseButton2 then
+        keyPressed = true
+        keyName = "RightClick"
+    elseif aimbotKeybind == "Q" and input.KeyCode == Enum.KeyCode.Q then
+        keyPressed = true
+        keyName = "Q"
+    elseif aimbotKeybind == "Ctrl" and (input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl) then
+        keyPressed = true
+        keyName = "Ctrl"
+    end
+    
+    if keyPressed and not lastKeyState[keyName] then
+        aimbotToggleActive = not aimbotToggleActive
+        lastKeyState[keyName] = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    local keyName = ""
+    
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        keyName = "RightClick"
+    elseif input.KeyCode == Enum.KeyCode.Q then
+        keyName = "Q"
+    elseif input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+        keyName = "Ctrl"
+    end
+    
+    if keyName ~= "" then
+        lastKeyState[keyName] = false
+    end
+end)
 
 
 getgenv().esp = {
@@ -1925,6 +1974,12 @@ end
 
 createKeybindPicker(aimbotContent, "Keybind", aimbotKeybind, function(value)
     aimbotKeybind = value
+end)
+createToggle(aimbotContent, "Toggle Mode", function(enabled)
+    aimbotToggleMode = enabled
+    if not enabled then
+        aimbotToggleActive = false
+    end
 end)
 createSlider(aimbotContent, "Smoothness", 0, 100, 80, function(value)
     aimbotSmoothness = value
