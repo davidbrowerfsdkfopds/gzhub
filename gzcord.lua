@@ -29,6 +29,7 @@ local fovCircle = nil
 local whitelistedPlayers = {}
 local viewedPlayers = {}
 local playerPopups = {}
+local priorityPlayers = {}
 
 
 
@@ -36,6 +37,8 @@ local speedEnabled = false
 local flyEnabled = false
 local speedValue = 16
 local jumpValue = 50
+local antiLockEnabled = false
+local antiLockConnection = nil
 
 
 local guiSettings = {
@@ -444,18 +447,23 @@ local function hasLineOfSight(targetPlayer)
 end
 
 local function getClosestPlayer()
-
-    if currentTarget and isTargetValid(currentTarget) and isWithinFOV(currentTarget) then
-
-        return currentTarget
+    -- Determine if there are any priority targets
+    local hasPriority = false
+    for plr, isPriority in pairs(priorityPlayers) do
+        if isPriority then
+            hasPriority = true
+            break
+        end
     end
-    
 
     local closestPlayer = nil
     local shortestDistance = math.huge
     
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= player and not whitelistedPlayers[targetPlayer] and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+        if targetPlayer ~= player
+            and not whitelistedPlayers[targetPlayer]
+            and (not hasPriority or priorityPlayers[targetPlayer])
+            and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
             local head = targetPlayer.Character.Head
             local screenPoint, onScreen = Camera:WorldToViewportPoint(head.Position)
             
@@ -480,7 +488,6 @@ local function aimAt(targetPlayer)
     local head = targetPlayer.Character.Head
     local targetPosition = head.Position
     
-
     if targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local velocity = targetPlayer.Character.HumanoidRootPart.Velocity
         targetPosition = targetPosition + (velocity * (aimbotPrediction / 100))
@@ -488,10 +495,14 @@ local function aimAt(targetPlayer)
     
     local currentCFrame = Camera.CFrame
     local targetCFrame = CFrame.lookAt(Camera.CFrame.Position, targetPosition)
-    
 
     local smoothness = aimbotSmoothness / 100
     Camera.CFrame = currentCFrame:Lerp(targetCFrame, 1 - smoothness)
+
+    -- AimeView logic: set camera to follow target's head
+    if aimeViewEnabled and aimbotEnabled and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+        Camera.CFrame = CFrame.new(targetPlayer.Character.Head.Position + Vector3.new(0, 1.5, 0), targetPlayer.Character.Head.Position + targetPlayer.Character.Head.CFrame.LookVector * 10)
+    end
 end
 
 local function isTargetValid(target)
@@ -760,8 +771,14 @@ end
 spawn(function()
     while task.wait() do
         pcall(function()
+            -- Determine if any priority players exist for ESP
+            local priorityActiveESP = false
+            for plr, flag in pairs(priorityPlayers) do
+                if flag then priorityActiveESP = true break end
+            end
+
             for i, v in next, Players:GetPlayers() do
-                if v ~= player and not whitelistedPlayers[v] then
+                if v ~= player and not whitelistedPlayers[v] and (not priorityActiveESP or priorityPlayers[v]) then
                     local drawingInstances = esp.players[v]
                     if not drawingInstances then continue end
 
@@ -983,6 +1000,27 @@ local function updateFly()
             bodyVelocity:Destroy()
             bodyVelocity = nil
         end
+    end
+end
+
+-- Anti-Lock: small random jitters in HumanoidRootPart each RenderStepped frame
+local function startAntiLock()
+    if antiLockConnection then return end
+    antiLockConnection = RunService.RenderStepped:Connect(function()
+        if not antiLockEnabled then return end
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            local offset = Vector3.new((math.random()-0.5)*0.4, (math.random()-0.5)*0.4, (math.random()-0.5)*0.4)
+            hrp.CFrame = hrp.CFrame + offset
+        end
+    end)
+end
+
+local function stopAntiLock()
+    if antiLockConnection then
+        antiLockConnection:Disconnect()
+        antiLockConnection = nil
     end
 end
 
@@ -1842,6 +1880,12 @@ createToggle(aimbotContent, "Aimbot", function(enabled)
     end
 end)
 
+-- AimeView toggle
+local aimeViewEnabled = false
+createToggle(aimbotContent, "AimeView", function(enabled)
+    aimeViewEnabled = enabled
+end)
+
 local function createKeybindPicker(parent, label, default, callback)
     local selectedKey = default or "Right Click"
     local waitingForKey = false
@@ -2026,6 +2070,107 @@ Create("TextLabel", {
     TextXAlignment = Enum.TextXAlignment.Left,
 })
 
+-- SHADERS TAB START
+local Lighting = game:GetService("Lighting")
+local shaderState = { mode = "None" }
+
+local function clearShaders()
+    for _, v in ipairs(Lighting:GetChildren()) do
+        if v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect") or v:IsA("BlurEffect") then
+            v:Destroy()
+        end
+    end
+end
+
+local function applyUltraShaders()
+    clearShaders()
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Brightness = 0.1
+    cc.Contrast = 0.25
+    cc.Saturation = 0.2
+    cc.TintColor = Color3.fromRGB(200, 220, 255)
+    cc.Parent = Lighting
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 1.2
+    bloom.Size = 56
+    bloom.Threshold = 0.8
+    bloom.Parent = Lighting
+    local dof = Instance.new("DepthOfFieldEffect")
+    dof.FarIntensity = 0.2
+    dof.FocusDistance = 30
+    dof.InFocusRadius = 20
+    dof.NearIntensity = 0.3
+    dof.Parent = Lighting
+    local sun = Instance.new("SunRaysEffect")
+    sun.Intensity = 0.15
+    sun.Spread = 0.25
+    sun.Parent = Lighting
+    local blur = Instance.new("BlurEffect")
+    blur.Size = 2
+    blur.Parent = Lighting
+end
+
+local function applyMidShaders()
+    clearShaders()
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Brightness = 0.05
+    cc.Contrast = 0.1
+    cc.Saturation = 0.1
+    cc.TintColor = Color3.fromRGB(180, 200, 230)
+    cc.Parent = Lighting
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 0.5
+    bloom.Size = 32
+    bloom.Threshold = 0.9
+    bloom.Parent = Lighting
+    local dof = Instance.new("DepthOfFieldEffect")
+    dof.FarIntensity = 0.1
+    dof.FocusDistance = 100
+    dof.InFocusRadius = 80
+    dof.NearIntensity = 0.1
+    dof.Parent = Lighting
+end
+
+local function setShaderMode(mode)
+    shaderState.mode = mode
+    if mode == "Ultra Shaders" then
+        applyUltraShaders()
+    elseif mode == "Mid Shaders" then
+        applyMidShaders()
+    else
+        clearShaders()
+    end
+end
+
+local shadersContent = createSection(mainTabData, "Shaders", "✨")
+Create("TextLabel", {
+    Parent = shadersContent,
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 22),
+    Font = Enum.Font.SourceSansSemibold,
+    Text = "Shader Preset:",
+    TextColor3 = Color3.fromRGB(220, 221, 222),
+    TextSize = 16,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+
+local shaderDropdown = createDropdown(shadersContent, "Mode", {"None", "Ultra Shaders", "Mid Shaders"}, "None", function(option)
+    setShaderMode(option)
+end)
+
+-- Add a description
+Create("TextLabel", {
+    Parent = shadersContent,
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 18),
+    Font = Enum.Font.SourceSans,
+    Text = "Ultra = cinematic, Mid = performance, None = default",
+    TextColor3 = Color3.fromRGB(185, 187, 190),
+    TextSize = 13,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+-- SHADERS TAB END
+
 local movementContent = createSection(mainTabData, "Movement", "#")
 createSlider(movementContent, "Speed", 16, 100, 16, function(value)
     speedValue = value
@@ -2038,6 +2183,15 @@ end)
 createSlider(movementContent, "Jump Speed", 50, 200, 50, function(value)
     jumpValue = value
     updateJump()
+end)
+
+createToggle(movementContent, "Anti-Lock", function(enabled)
+    antiLockEnabled = enabled
+    if enabled then
+        startAntiLock()
+    else
+        stopAntiLock()
+    end
 end)
 
 
@@ -2407,7 +2561,7 @@ local function createPlayerPopup(targetPlayer, parentFrame)
         BackgroundColor3 = Color3.fromRGB(32, 34, 37),
         BorderSizePixel = 1,
         BorderColor3 = Color3.fromRGB(20, 22, 25),
-        Size = UDim2.new(0, 150, 0, 120),
+        Size = UDim2.new(0, 150, 0, 150),
         Position = UDim2.new(0, Mouse.X, 0, Mouse.Y),
         ZIndex = 1000,
     })
@@ -2431,6 +2585,19 @@ local function createPlayerPopup(targetPlayer, parentFrame)
     })
     Create("UICorner", {Parent = whitelistBtn, CornerRadius = UDim.new(0, 4)})
     
+
+    -- Priority button
+    local priorityBtn = Create("TextButton", {
+        Parent = popup,
+        BackgroundColor3 = priorityPlayers[targetPlayer] and Color3.fromRGB(240, 71, 71) or Color3.fromRGB(47, 49, 54),
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 0, 30),
+        Font = Enum.Font.SourceSans,
+        Text = priorityPlayers[targetPlayer] and "Unpriority" or "Priority",
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextSize = 14,
+    })
+    Create("UICorner", {Parent = priorityBtn, CornerRadius = UDim.new(0, 4)})
 
     local viewBtn = Create("TextButton", {
         Parent = popup,
@@ -2475,12 +2642,61 @@ local function createPlayerPopup(targetPlayer, parentFrame)
         whitelistedPlayers[targetPlayer] = not whitelistedPlayers[targetPlayer]
         whitelistBtn.Text = whitelistedPlayers[targetPlayer] and "Unwhitelist" or "Whitelist"
         whitelistBtn.BackgroundColor3 = whitelistedPlayers[targetPlayer] and Color3.fromRGB(128, 0, 128) or Color3.fromRGB(47, 49, 54)
-        
+
+        -- If player is whitelisted, remove priority status
+        if whitelistedPlayers[targetPlayer] then
+            priorityPlayers[targetPlayer] = nil
+            if priorityBtn then
+                priorityBtn.Text = "Priority"
+                priorityBtn.BackgroundColor3 = Color3.fromRGB(47, 49, 54)
+            end
+        end
+
+        -- Hide ESP immediately if player is now whitelisted
+        if whitelistedPlayers[targetPlayer] and esp.players[targetPlayer] then
+            for _, drawing in pairs(esp.players[targetPlayer]) do
+                if drawing and drawing.Visible ~= nil then
+                    drawing.Visible = false
+                end
+            end
+        end
 
         if statusFrames[targetPlayer] and statusFrames[targetPlayer].Parent then
             local nameLabel = statusFrames[targetPlayer].Parent:FindFirstChild("TextLabel")
             if nameLabel then
-                nameLabel.TextColor3 = whitelistedPlayers[targetPlayer] and Color3.fromRGB(128, 0, 128) or Color3.fromRGB(255, 255, 255)
+                if priorityPlayers[targetPlayer] then
+                    nameLabel.TextColor3 = Color3.fromRGB(240, 71, 71)
+                elseif whitelistedPlayers[targetPlayer] then
+                    nameLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                else
+                    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                end
+            end
+        end
+    end)
+    
+    priorityBtn.MouseButton1Click:Connect(function()
+        priorityPlayers[targetPlayer] = not priorityPlayers[targetPlayer]
+        priorityBtn.Text = priorityPlayers[targetPlayer] and "Unpriority" or "Priority"
+        priorityBtn.BackgroundColor3 = priorityPlayers[targetPlayer] and Color3.fromRGB(240, 71, 71) or Color3.fromRGB(47, 49, 54)
+
+        -- Remove from whitelist if now priority
+        if priorityPlayers[targetPlayer] and whitelistedPlayers[targetPlayer] then
+            whitelistedPlayers[targetPlayer] = nil
+            whitelistBtn.Text = "Whitelist"
+            whitelistBtn.BackgroundColor3 = Color3.fromRGB(47, 49, 54)
+        end
+
+        if statusFrames[targetPlayer] and statusFrames[targetPlayer].Parent then
+            local nameLabel = statusFrames[targetPlayer].Parent:FindFirstChild("TextLabel")
+            if nameLabel then
+                if priorityPlayers[targetPlayer] then
+                    nameLabel.TextColor3 = Color3.fromRGB(240, 71, 71)
+                elseif whitelistedPlayers[targetPlayer] then
+                    nameLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                else
+                    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                end
             end
         end
     end)
@@ -2547,6 +2763,7 @@ local function addPlayer(player)
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 32),
     })
+    entry.Name = player.Name  -- for search convenience
 
     local headshot = Create("ImageLabel", {
         Parent = entry,
@@ -2571,7 +2788,8 @@ local function addPlayer(player)
         Position = UDim2.new(0, 44, 0, 0),
         Font = Enum.Font.SourceSans,
         Text = player.Name,
-        TextColor3 = whitelistedPlayers[player] and Color3.fromRGB(128, 0, 128) or Color3.fromRGB(255, 255, 255),
+        TextColor3 = priorityPlayers[player] and Color3.fromRGB(240, 71, 71)
+            or (whitelistedPlayers[player] and Color3.fromRGB(128, 0, 128) or Color3.fromRGB(255, 255, 255)),
         TextSize = 14,
         TextXAlignment = Enum.TextXAlignment.Left,
     })
@@ -2673,6 +2891,9 @@ Players.LocalPlayer.CharacterAdded:Connect(function()
     wait(1)
     updateSpeed()
     updateJump()
+    if antiLockEnabled then
+        startAntiLock()
+    end
 end)
 
 
@@ -2682,3 +2903,198 @@ print("gzcord - Functional Version Loaded!")
 print("Aimbot: " .. aimbotKeybind .. " to activate")
 print("ESP: Toggle in Visuals section")
 print("Movement: Adjust speed, fly, and jump in Movement section")
+
+-- SHADER LOGIC (keep these functions)
+local Lighting = game:GetService("Lighting")
+local function clearShaders()
+    for _, v in ipairs(Lighting:GetChildren()) do
+        if v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect") or v:IsA("BlurEffect") then
+            v:Destroy()
+        end
+    end
+end
+local function applyUltraShaders()
+    clearShaders()
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Brightness = 0.1
+    cc.Contrast = 0.25
+    cc.Saturation = 0.2
+    cc.TintColor = Color3.fromRGB(200, 220, 255)
+    cc.Parent = Lighting
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 1.2
+    bloom.Size = 56
+    bloom.Threshold = 0.8
+    bloom.Parent = Lighting
+    local dof = Instance.new("DepthOfFieldEffect")
+    dof.FarIntensity = 0.2
+    dof.FocusDistance = 30
+    dof.InFocusRadius = 20
+    dof.NearIntensity = 0.3
+    dof.Parent = Lighting
+    local sun = Instance.new("SunRaysEffect")
+    sun.Intensity = 0.15
+    sun.Spread = 0.25
+    sun.Parent = Lighting
+    local blur = Instance.new("BlurEffect")
+    blur.Size = 2
+    blur.Parent = Lighting
+end
+local function applyMidShaders()
+    clearShaders()
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Brightness = 0.05
+    cc.Contrast = 0.1
+    cc.Saturation = 0.1
+    cc.TintColor = Color3.fromRGB(180, 200, 230)
+    cc.Parent = Lighting
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 0.5
+    bloom.Size = 32
+    bloom.Threshold = 0.9
+    bloom.Parent = Lighting
+    local dof = Instance.new("DepthOfFieldEffect")
+    dof.FarIntensity = 0.1
+    dof.FocusDistance = 100
+    dof.InFocusRadius = 80
+    dof.NearIntensity = 0.1
+    dof.Parent = Lighting
+end
+
+-- Remove shaders section from mainTabData if present
+-- Add a new shadersTabData for the shaders tab
+local shadersTabData = { sections = {} }
+local shadersSection = createSection(shadersTabData, "Shaders", "✨")
+
+Create("TextLabel", {
+    Parent = shadersSection,
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 28),
+    Font = Enum.Font.SourceSansBold,
+    Text = "Shader Presets",
+    TextColor3 = Color3.fromRGB(114, 137, 218),
+    TextSize = 18,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+
+local shaderButtons = {}
+local shaderModes = {
+    {name = "Ultra Shaders", icon = "💎", func = applyUltraShaders, desc = "Cinematic, high-quality look."},
+    {name = "Mid Shaders", icon = "✨", func = applyMidShaders, desc = "Performance-friendly, balanced look."},
+    {name = "No Shaders", icon = "🚫", func = clearShaders, desc = "Default Roblox lighting."},
+}
+local activeShader = nil
+
+for i, mode in ipairs(shaderModes) do
+    local btn = Create("TextButton", {
+        Parent = shadersSection,
+        BackgroundColor3 = Color3.fromRGB(54, 57, 63),
+        Size = UDim2.new(1, 0, 0, 36),
+        Font = Enum.Font.SourceSansBold,
+        Text = mode.icon .. "  " .. mode.name,
+        TextColor3 = Color3.fromRGB(220, 221, 222),
+        TextSize = 16,
+        AutoButtonColor = true,
+        LayoutOrder = i,
+    })
+    Create("UICorner", {Parent = btn, CornerRadius = UDim.new(0, 6)})
+    Create("UIPadding", {Parent = btn, PaddingLeft = UDim.new(0, 10)})
+    local desc = Create("TextLabel", {
+        Parent = btn,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -40, 1, 0),
+        Position = UDim2.new(0, 40, 0, 0),
+        Font = Enum.Font.SourceSans,
+        Text = mode.desc,
+        TextColor3 = Color3.fromRGB(185, 187, 190),
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+    })
+    desc.ZIndex = btn.ZIndex + 1
+    shaderButtons[mode.name] = btn
+    btn.MouseButton1Click:Connect(function()
+        for _, b in pairs(shaderButtons) do
+            b.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+            b.TextColor3 = Color3.fromRGB(220, 221, 222)
+        end
+        btn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        activeShader = mode.name
+        mode.func()
+    end)
+end
+-- Set default active shader visually
+shaderButtons["No Shaders"].BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+shaderButtons["No Shaders"].TextColor3 = Color3.fromRGB(255, 255, 255)
+activeShader = "No Shaders"
+
+-- Add a shaders tab button to the sidebar before settings
+local shadersTabButton = Create("TextButton", {
+    Name = "ShadersTab",
+    Parent = tabColumn,
+    BackgroundColor3 = Color3.fromRGB(47, 49, 54),
+    Size = UDim2.new(0, 48, 0, 48),
+    LayoutOrder = 4,
+    Font = Enum.Font.SourceSansBold,
+    Text = "✨",
+    TextColor3 = Color3.fromRGB(220, 221, 222),
+    TextSize = 24,
+    AutoButtonColor = false,
+})
+Create("UICorner", {Parent = shadersTabButton, CornerRadius = UDim.new(0.5, 0)})
+
+shadersTabButton.MouseButton1Click:Connect(function()
+    setActiveTab(shadersTabButton, shadersTabData)
+end)
+
+-- Adjust layout orders for main/settings tabs
+mainTabButton.LayoutOrder = 1
+shadersTabButton.LayoutOrder = 4
+settingsTabButton.LayoutOrder = 5
+
+-- Remove any 'Shaders' section from mainTabData if present
+for i = #mainTabData.sections, 1, -1 do
+    if mainTabData.sections[i].button.Name == "Shaders" then
+        mainTabData.sections[i].button:Destroy()
+        if mainTabData.sections[i].content then
+            mainTabData.sections[i].content:Destroy()
+        end
+        table.remove(mainTabData.sections, i)
+    end
+end
+
+-- Search box for player list
+local searchBox = Create("TextBox", {
+    Name = "SearchBox",
+    Parent = leaderboardColumn,
+    BackgroundColor3 = Color3.fromRGB(54, 57, 63),
+    BorderSizePixel = 0,
+    Size = UDim2.new(1, -16, 0, 26),
+    Position = UDim2.new(0, 8, 0, 56),
+    ClearTextOnFocus = false,
+    PlaceholderText = "Search...",
+    PlaceholderColor3 = Color3.fromRGB(185, 187, 190),
+    Font = Enum.Font.SourceSans,
+    Text = "",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+Create("UICorner", {Parent = searchBox, CornerRadius = UDim.new(0, 6)})
+
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local q = searchBox.Text:lower()
+    for _, entry in ipairs(lbScroll:GetChildren()) do
+        if entry:IsA("Frame") then
+            local nameLabel = entry:FindFirstChildWhichIsA("TextLabel")
+            if nameLabel then
+                entry.Visible = (q == "") or (nameLabel.Text:lower():find(q, 1, true) ~= nil)
+            end
+        end
+    end
+end)
+
+-- Move leaderboard scroll below search box
+lbScroll.Position = UDim2.new(0, 0, 0, 88)
+lbScroll.Size = UDim2.new(1, 0, 1, -88)
