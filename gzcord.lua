@@ -51,121 +51,79 @@ local guiSettings = {
 
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "DiscordMockupGui"
+screenGui.Name = "GZCORD"
+screenGui.IgnoreGuiInset = true
 screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.Parent = playerGui
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+screenGui.Enabled = false
 
+-- === GUI BACKGROUND BLUR HELPERS ===
+local Lighting = game:GetService("Lighting")
+local BLUR_NAME = "GZHubBlur"
+local BLUR_SIZE = 24
 
-local windowFrame = Instance.new("Frame")
-windowFrame.Name = "WindowFrame"
-windowFrame.BackgroundColor3 = Color3.fromRGB(32, 34, 37)
-windowFrame.BorderSizePixel = 2
-windowFrame.BorderColor3 = Color3.fromRGB(114, 137, 218)
-windowFrame.Active = true
-windowFrame.Draggable = true
-windowFrame.Size = UDim2.new(0, 800, 0, 500)
-windowFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
-windowFrame.Parent = screenGui
+local function enableGUIBlur()
+    -- Ensure only one blur exists
+    local blur = Lighting:FindFirstChild(BLUR_NAME)
+    if not blur then
+        blur = Instance.new("BlurEffect")
+        blur.Name = BLUR_NAME
+        blur.Size = BLUR_SIZE
+        blur.Parent = Lighting
+    end
+    blur.Enabled = true
+end
 
-local windowCorner = Instance.new("UICorner")
-windowCorner.CornerRadius = UDim.new(0, 12)
-windowCorner.Parent = windowFrame
+local function disableGUIBlur()
+    local blur = Lighting:FindFirstChild(BLUR_NAME)
+    if blur then
+        blur.Enabled = false
+        blur:Destroy()
+    end
+end
 
+-- Connect Blur to GUI visibility
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+    if screenGui.Enabled then
+        enableGUIBlur()
+    else
+        disableGUIBlur()
+    end
+end)
 
-local gradient = Instance.new("UIGradient")
-gradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 34, 37)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(47, 49, 54))
-}
-gradient.Rotation = 45
-gradient.Parent = windowFrame
+-- === GUI BACKGROUND BLUR HELPERS ===
+local Lighting = game:GetService("Lighting")
+local BLUR_NAME = "GZHubBlur"
+local BLUR_SIZE = 24
 
+local function enableGUIBlur()
+    -- Ensure only one blur exists
+    local blur = Lighting:FindFirstChild(BLUR_NAME)
+    if not blur then
+        blur = Instance.new("BlurEffect")
+        blur.Name = BLUR_NAME
+        blur.Size = BLUR_SIZE
+        blur.Parent = Lighting
+    end
+    blur.Enabled = true
+end
 
-local glowFrame = Instance.new("Frame")
-glowFrame.Name = "GlowFrame"
-glowFrame.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
-glowFrame.BackgroundTransparency = 0.8
-glowFrame.BorderSizePixel = 0
-glowFrame.Size = UDim2.new(1, 4, 1, 4)
-glowFrame.Position = UDim2.new(0, -2, 0, -2)
-glowFrame.ZIndex = windowFrame.ZIndex - 1
-glowFrame.Parent = windowFrame
+local function disableGUIBlur()
+    local blur = Lighting:FindFirstChild(BLUR_NAME)
+    if blur then
+        blur.Enabled = false
+        blur:Destroy()
+    end
+end
 
-local glowCorner = Instance.new("UICorner")
-glowCorner.CornerRadius = UDim.new(0, 14)
-glowCorner.Parent = glowFrame
-
-
-local titleBar = Instance.new("Frame")
-titleBar.Name = "TitleBar"
-titleBar.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
-titleBar.BorderSizePixel = 0
-titleBar.Size = UDim2.new(1, 0, 0, 30)
-titleBar.Parent = windowFrame
-
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 12)
-titleCorner.Parent = titleBar
-
-
-local titleText = Instance.new("TextLabel")
-titleText.Name = "TitleText"
-titleText.BackgroundTransparency = 1
-titleText.Size = UDim2.new(1, -100, 1, 0)
-titleText.Position = UDim2.new(0, 10, 0, 0)
-titleText.Font = Enum.Font.SourceSansBold
-titleText.Text = "🎯 GZHub V1"
-titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleText.TextSize = 14
-titleText.TextXAlignment = Enum.TextXAlignment.Left
-titleText.Parent = titleBar
-
-
-local closeButton = Instance.new("TextButton")
-closeButton.Name = "CloseButton"
-closeButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
-closeButton.BorderSizePixel = 0
-closeButton.Size = UDim2.new(0, 25, 0, 20)
-closeButton.Position = UDim2.new(1, -30, 0, 5)
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.Text = "✕"
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.TextSize = 12
-closeButton.Parent = titleBar
-
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 4)
-closeCorner.Parent = closeButton
-
-
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Name = "MinimizeButton"
-minimizeButton.BackgroundColor3 = Color3.fromRGB(255, 163, 67)
-minimizeButton.BorderSizePixel = 0
-minimizeButton.Size = UDim2.new(0, 25, 0, 20)
-minimizeButton.Position = UDim2.new(1, -60, 0, 5)
-minimizeButton.Font = Enum.Font.SourceSansBold
-minimizeButton.Text = "−"
-minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-minimizeButton.TextSize = 12
-minimizeButton.Parent = titleBar
-
-local minimizeCorner = Instance.new("UICorner")
-minimizeCorner.CornerRadius = UDim.new(0, 4)
-minimizeCorner.Parent = minimizeButton
-
-
-closeButton.MouseButton1Click:Connect(function()
-    if guiSettings.animations then
-        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-        local tween = TweenService:Create(windowFrame, tweenInfo, {
-            Size = UDim2.new(0, 0, 0, 0),
-            Position = UDim2.new(0.5, 0, 0.5, 0)
-        })
-        tween:Play()
-        tween.Completed:Connect(function()
-            screenGui.Enabled = false
+-- Connect Blur to GUI visibility
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+    if screenGui.Enabled then
+        enableGUIBlur()
+    else
+        disableGUIBlur()
+    end
+end)
             guiSettings.visible = false
         end)
     else
@@ -1277,6 +1235,7 @@ local function createToggle(parent, label, callback)
     })
     Create("UICorner", { Parent = knob, CornerRadius = UDim.new(0.5, 0) })
     local enabled = false
+    attachClickSound(switch)
     switch.MouseButton1Click:Connect(function()
         enabled = not enabled
         local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -1361,7 +1320,7 @@ local function createDropdown(parent, label, options, default, callback)
     })
     Create("UICorner", { Parent = dropdown, CornerRadius = UDim.new(0, 6) })
     Create("UIPadding", { Parent = dropdown, PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 30) })
-    
+    attachClickSound(dropdown)
     -- Dropdown arrow
     local arrow = Create("TextLabel", {
         Parent = dropdown,
@@ -1375,61 +1334,42 @@ local function createDropdown(parent, label, options, default, callback)
         TextXAlignment = Enum.TextXAlignment.Center,
         TextYAlignment = Enum.TextYAlignment.Center,
     })
-    
-    -- Dropdown list container
-    local dropdownList = Create("Frame", {
-        Parent = frame,
-        BackgroundColor3 = Color3.fromRGB(54, 57, 63),
-        BorderSizePixel = 1,
-        BorderColor3 = Color3.fromRGB(114, 137, 218),
-        Size = UDim2.new(0.5, -8, 0, math.max(#options * 24 + 8, 32)),
-        Position = UDim2.new(0.5, -8, 1, 2),
-        Visible = false,
-        ZIndex = 1000,
-    })
-    Create("UICorner", { Parent = dropdownList, CornerRadius = UDim.new(0, 6) })
-    Create("UIPadding", { Parent = dropdownList, PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) })
-    Create("UIListLayout", { Parent = dropdownList, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) })
-    
-    -- Shadow effect
-    local shadow = Create("Frame", {
-        Parent = frame,
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-        BackgroundTransparency = 0.7,
-        BorderSizePixel = 0,
-        Size = UDim2.new(0.5, -4, 0, math.max(#options * 24 + 12, 36)),
-        Position = UDim2.new(0.5, -6, 1, 4),
-        Visible = false,
-        ZIndex = 999,
-    })
-    Create("UICorner", { Parent = shadow, CornerRadius = UDim.new(0, 6) })
-    
-    -- Create option buttons
-    local optionButtons = {}
-    for i, option in ipairs(options) do
-        local optionButton = Create("TextButton", {
-            Parent = dropdownList,
-            BackgroundColor3 = Color3.fromRGB(54, 57, 63),
-            BorderSizePixel = 0,
-            Size = UDim2.new(1, -8, 0, 22),
-            AutoButtonColor = false,
-            Text = option,
-            Font = Enum.Font.SourceSansSemibold,
-            TextColor3 = Color3.fromRGB(220, 221, 222),
-            TextSize = 14,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            LayoutOrder = i,
-        })
-        Create("UICorner", { Parent = optionButton, CornerRadius = UDim.new(0, 4) })
-        Create("UIPadding", { Parent = optionButton, PaddingLeft = UDim.new(0, 8) })
+    ...
+    -- Main dropdown click handler
+    dropdown.MouseButton1Click:Connect(function()
+        local isOpening = not dropdownList.Visible
         
-        optionButtons[option] = optionButton
+        dropdownList.Visible = isOpening
+        shadow.Visible = isOpening
         
-        -- Set initial selection state
-        if option == selectedValue then
-            optionButton.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
-            optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        if isOpening then
+            -- Opening dropdown
+            dropdown.BackgroundColor3 = Color3.fromRGB(64, 68, 75)
+            dropdown.BorderColor3 = Color3.fromRGB(114, 137, 218)
+            arrow.TextColor3 = Color3.fromRGB(114, 137, 218)
+            arrow.Text = "▲"
+            
+            -- Ensure proper selection highlighting
+            for option, button in pairs(optionButtons) do
+                if option == selectedValue then
+                    button.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
+                    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                else
+                    button.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+                    button.TextColor3 = Color3.fromRGB(220, 221, 222)
+                end
+            end
+        else
+            -- Closing dropdown
+            dropdown.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+            dropdown.BorderColor3 = Color3.fromRGB(72, 75, 81)
+            arrow.TextColor3 = Color3.fromRGB(185, 187, 190)
+            arrow.Text = "▼"
         end
+    end)
+    ...
+    return frame
+end
         
         -- Hover effects
         optionButton.MouseEnter:Connect(function()
@@ -1648,7 +1588,7 @@ local function createSlider(parent, label, min, max, default, callback)
         Parent = knob,
         CornerRadius = UDim.new(0.5, 0),
     })
-
+    attachClickSound(track)
 
     local dragging = false
 
@@ -1931,7 +1871,7 @@ local function createKeybindPicker(parent, label, default, callback)
     })
     Create("UICorner", { Parent = keyButton, CornerRadius = UDim.new(0, 6) })
     Create("UIPadding", { Parent = keyButton, PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) })
-    
+    attachClickSound(keyButton)
     -- Quick Right Click button
     local rightClickButton = Create("TextButton", {
         Parent = frame,
@@ -1949,7 +1889,7 @@ local function createKeybindPicker(parent, label, default, callback)
         LayoutOrder = 3,
     })
     Create("UICorner", { Parent = rightClickButton, CornerRadius = UDim.new(0, 6) })
-    
+    attachClickSound(rightClickButton)
     -- Right click button functionality
     rightClickButton.MouseButton1Click:Connect(function()
         if not waitingForKey then
@@ -2220,10 +2160,11 @@ Create("TextLabel", {
 
 local themeButtons = {}
 local themes = {
-    {name = "Dark", colors = {Color3.fromRGB(32, 34, 37), Color3.fromRGB(47, 49, 54)}},
-    {name = "Purple", colors = {Color3.fromRGB(88, 101, 242), Color3.fromRGB(114, 137, 218)}},
-    {name = "Blue", colors = {Color3.fromRGB(0, 123, 255), Color3.fromRGB(52, 144, 220)}},
-    {name = "Green", colors = {Color3.fromRGB(67, 181, 129), Color3.fromRGB(87, 201, 149)}}
+    {name = "Dark",   colors = {Color3.fromRGB(24,24,32), Color3.fromRGB(36,36,54)}},
+    {name = "Purple", colors = {Color3.fromRGB(58,24,86), Color3.fromRGB(120,66,138)}},
+    {name = "Blue",   colors = {Color3.fromRGB(33,105,189), Color3.fromRGB(22, 62, 97)}},
+    {name = "Green",  colors = {Color3.fromRGB(44, 98, 70), Color3.fromRGB(30, 51, 36)}},
+    {name = "Neon",   colors = {Color3.fromRGB(0,255,255), Color3.fromRGB(255,0,255)}},
 }
 
 local themeContainer = Create("Frame", {
@@ -2507,6 +2448,37 @@ Create("TextLabel", {
 })
 
 
+local function brightenColor(color3, amount)
+    return Color3.new(
+        math.clamp(color3.R + amount/255, 0, 1),
+        math.clamp(color3.G + amount/255, 0, 1),
+        math.clamp(color3.B + amount/255, 0, 1)
+    )
+end
+
+local function applySidebarHoverAnim(button)
+    local origSize = button.Size
+    local hoverSize = UDim2.new(0, 54, 0, 54)
+    local origBG = button.BackgroundColor3
+    local hoverBG = brightenColor(origBG, 20)
+    local origTrans = button.BackgroundTransparency or 0
+
+    button.MouseEnter:Connect(function()
+        game:GetService("TweenService"):Create(button, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = hoverSize,
+            BackgroundColor3 = hoverBG,
+            BackgroundTransparency = 0.09
+        }):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        game:GetService("TweenService"):Create(button, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = origSize,
+            BackgroundColor3 = origBG,
+            BackgroundTransparency = origTrans
+        }):Play()
+    end)
+end
+
 local mainTabButton = Create("TextButton", {
     Name = "MainTab",
     Parent = tabColumn,
@@ -2534,6 +2506,34 @@ local settingsTabButton = Create("TextButton", {
 })
 Create("UICorner", {Parent = settingsTabButton, CornerRadius = UDim.new(0.5, 0)})
 
+-- Sidebar Tab Hover Animation (after sidebar buttons are created)
+applySidebarHoverAnim(mainTabButton)
+applySidebarHoverAnim(settingsTabButton)
+
+
+-- === UI CLICK SOUND FEEDBACK ===
+local UISound = Instance.new("Sound")
+UISound.Name = "UISound"
+UISound.SoundId = "rbxassetid://12222242"
+UISound.Volume = 0.4
+UISound.Parent = screenGui
+UISound.Looped = false
+
+local function attachClickSound(button)
+    if button:FindFirstChild("_soundAttached") then return end
+    local flag = Instance.new("BoolValue")
+    flag.Name = "_soundAttached"
+    flag.Parent = button
+    button.MouseButton1Click:Connect(function()
+        if UISound.IsLoaded or UISound.TimeLength > 0 then
+            UISound:Play()
+        end
+    end)
+end
+
+attachClickSound(mainTabButton)
+attachClickSound(settingsTabButton)
+attachClickSound(shadersTabButton)
 
 mainTabButton.MouseButton1Click:Connect(function()
     setActiveTab(mainTabButton, mainTabData)
@@ -3030,23 +3030,7 @@ shaderButtons["No Shaders"].TextColor3 = Color3.fromRGB(255, 255, 255)
 activeShader = "No Shaders"
 
 -- Add a shaders tab button to the sidebar before settings
-local shadersTabButton = Create("TextButton", {
-    Name = "ShadersTab",
-    Parent = tabColumn,
-    BackgroundColor3 = Color3.fromRGB(47, 49, 54),
-    Size = UDim2.new(0, 48, 0, 48),
-    LayoutOrder = 4,
-    Font = Enum.Font.SourceSansBold,
-    Text = "✨",
-    TextColor3 = Color3.fromRGB(220, 221, 222),
-    TextSize = 24,
-    AutoButtonColor = false,
-})
-Create("UICorner", {Parent = shadersTabButton, CornerRadius = UDim.new(0.5, 0)})
-
-shadersTabButton.MouseButton1Click:Connect(function()
-    setActiveTab(shadersTabButton, shadersTabData)
-end)
+-- (already created above, hover animation attached)
 
 -- Adjust layout orders for main/settings tabs
 mainTabButton.LayoutOrder = 1
