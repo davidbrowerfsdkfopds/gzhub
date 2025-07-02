@@ -2164,7 +2164,7 @@ local themes = {
     {name = "Purple", colors = {Color3.fromRGB(58,24,86), Color3.fromRGB(120,66,138)}},
     {name = "Blue",   colors = {Color3.fromRGB(33,105,189), Color3.fromRGB(22, 62, 97)}},
     {name = "Green",  colors = {Color3.fromRGB(44, 98, 70), Color3.fromRGB(30, 51, 36)}},
-    {name = "Neon",   colors = {Color3.fromRGB(0,255,255), Color3.fromRGB(255,0,255)}},
+    {name = "Neon",   colors = {Color3.fromRGB(0,255,255), Color3.fromRGB(255,0,255)}}
 }
 
 local themeContainer = Create("Frame", {
