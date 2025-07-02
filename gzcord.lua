@@ -2,6 +2,58 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+
+-- === UI CLICK SOUND FEEDBACK (single definition, no duplication) ===
+local UISound = Instance.new("Sound")
+UISound.Name = "UISound"
+UISound.SoundId = "rbxassetid://12222242"
+UISound.Volume = 0.4
+UISound.Parent = screenGui
+UISound.Looped = false
+
+local function attachClickSound(button)
+    if button:FindFirstChild("_soundAttached") then return end
+    local flag = Instance.new("BoolValue")
+    flag.Name = "_soundAttached"
+    flag.Parent = button
+    button.MouseButton1Click:Connect(function()
+        if UISound.IsLoaded or UISound.TimeLength > 0 then
+            UISound:Play()
+        end
+    end)
+end
+
+-- === Sidebar tab hover helpers (single definition, no duplication) ===
+local function brightenColor(color3, amount)
+    return Color3.new(
+        math.clamp(color3.R + amount/255, 0, 1),
+        math.clamp(color3.G + amount/255, 0, 1),
+        math.clamp(color3.B + amount/255, 0, 1)
+    )
+end
+
+local function applySidebarHoverAnim(button)
+    local origSize = button.Size
+    local hoverSize = UDim2.new(0, 54, 0, 54)
+    local origBG = button.BackgroundColor3
+    local hoverBG = brightenColor(origBG, 20)
+    local origTrans = button.BackgroundTransparency or 0
+
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = hoverSize,
+            BackgroundColor3 = hoverBG,
+            BackgroundTransparency = 0.09
+        }):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = origSize,
+            BackgroundColor3 = origBG,
+            BackgroundTransparency = origTrans
+        }):Play()
+    end)
+end
 local Camera = workspace.CurrentCamera
 
 
@@ -1261,6 +1313,9 @@ local function createToggle(parent, label, callback)
     end)
     return frame
 end
+    end)
+    return frame
+end
 
 
 local function createDropdown(parent, label, options, default, callback)
@@ -1589,6 +1644,7 @@ local function createSlider(parent, label, min, max, default, callback)
         CornerRadius = UDim.new(0.5, 0),
     })
     attachClickSound(track)
+    attachClickSound(track)
 
     local dragging = false
 
@@ -1872,6 +1928,7 @@ local function createKeybindPicker(parent, label, default, callback)
     Create("UICorner", { Parent = keyButton, CornerRadius = UDim.new(0, 6) })
     Create("UIPadding", { Parent = keyButton, PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) })
     attachClickSound(keyButton)
+    attachClickSound(keyButton)
     -- Quick Right Click button
     local rightClickButton = Create("TextButton", {
         Parent = frame,
@@ -1889,6 +1946,7 @@ local function createKeybindPicker(parent, label, default, callback)
         LayoutOrder = 3,
     })
     Create("UICorner", { Parent = rightClickButton, CornerRadius = UDim.new(0, 6) })
+    attachClickSound(rightClickButton)
     attachClickSound(rightClickButton)
     -- Right click button functionality
     rightClickButton.MouseButton1Click:Connect(function()
@@ -2535,13 +2593,20 @@ attachClickSound(mainTabButton)
 attachClickSound(settingsTabButton)
 attachClickSound(shadersTabButton)
 
+attachClickSound(mainTabButton)
+attachClickSound(settingsTabButton)
+attachClickSound(shadersTabButton)
+
+applySidebarHoverAnim(mainTabButton)
+applySidebarHoverAnim(settingsTabButton)
+applySidebarHoverAnim(shadersTabButton)
+
 mainTabButton.MouseButton1Click:Connect(function()
     setActiveTab(mainTabButton, mainTabData)
 end)
 settingsTabButton.MouseButton1Click:Connect(function()
     setActiveTab(settingsTabButton, settingsTabData)
 end)
-
 
 setActiveTab(mainTabButton, mainTabData)
 
