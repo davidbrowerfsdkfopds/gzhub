@@ -3,6 +3,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Camera = workspace.CurrentCamera
+local HttpService = game:GetService("HttpService")
 
 
 local player = Players.LocalPlayer
@@ -18,6 +19,7 @@ local aimbotToggleMode = false
 local aimbotToggleActive = false
 local aimbotConnection = nil
 local currentTarget = nil
+local wallCheckEnabled = false -- New variable for wall detection toggle
 
 
 local fovEnabled = false
@@ -43,8 +45,8 @@ local antiLockConnection = nil
 
 local guiSettings = {
     theme = "dark",
-    transparency = 0,
-    scale = 1,
+    transparency = 0.30,
+    scale = 0.85,
     animations = true,
     visible = true
 }
@@ -71,6 +73,20 @@ windowFrame.Parent = screenGui
 local windowCorner = Instance.new("UICorner")
 windowCorner.CornerRadius = UDim.new(0, 12)
 windowCorner.Parent = windowFrame
+
+-- Drop shadow behind window
+local windowShadow = Instance.new("ImageLabel")
+windowShadow.Name = "WindowShadow"
+windowShadow.Image = "rbxassetid://1316045217" -- soft shadow asset
+windowShadow.BackgroundTransparency = 1
+windowShadow.ScaleType = Enum.ScaleType.Slice
+windowShadow.SliceCenter = Rect.new(10,10,118,118)
+windowShadow.Size = UDim2.new(1, 40, 1, 40)
+windowShadow.Position = UDim2.new(0, -20, 0, -20)
+windowShadow.ZIndex = windowFrame.ZIndex - 2
+windowShadow.ImageColor3 = Color3.new(0,0,0)
+windowShadow.ImageTransparency = 0.8
+windowShadow.Parent = windowFrame
 
 
 local gradient = Instance.new("UIGradient")
@@ -467,7 +483,7 @@ local function getClosestPlayer()
             local head = targetPlayer.Character.Head
             local screenPoint, onScreen = Camera:WorldToViewportPoint(head.Position)
             
-            if onScreen and hasLineOfSight(targetPlayer) and isWithinFOV(targetPlayer) then
+            if onScreen and (not wallCheckEnabled or hasLineOfSight(targetPlayer)) and isWithinFOV(targetPlayer) then
                 local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
                 if distance < shortestDistance then
                     shortestDistance = distance
@@ -506,7 +522,11 @@ local function aimAt(targetPlayer)
 end
 
 local function isTargetValid(target)
-    return target and target.Character and target.Character:FindFirstChild("Head") and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 and hasLineOfSight(target)
+    return target and target.Character and target.Character:FindFirstChild("Head") 
+        and target.Character:FindFirstChild("HumanoidRootPart") 
+        and target.Character:FindFirstChildOfClass("Humanoid") 
+        and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 
+        and (not wallCheckEnabled or hasLineOfSight(target))
 end
 
 local function isTargetValidForLock(target)
@@ -778,24 +798,15 @@ spawn(function()
             end
 
             for i, v in next, Players:GetPlayers() do
-                if v ~= player and not whitelistedPlayers[v] and (not priorityActiveESP or priorityPlayers[v]) then
+                if v ~= player then
                     local drawingInstances = esp.players[v]
                     if not drawingInstances then continue end
 
+                    -- Decide if this player's ESP should be shown based on whitelist/priority status
+                    local shouldRender = not whitelistedPlayers[v] and (not priorityActiveESP or priorityPlayers[v])
 
-                if not isAlive(v) then
-                    drawingInstances.Box.Visible = false
-                    drawingInstances.BoxOutline.Visible = false
-                    drawingInstances.Health.Visible = false
-                    drawingInstances.HealthOutline.Visible = false
-                    drawingInstances.Name.Visible = false
-                    drawingInstances.HealthText.Visible = false
-                    continue
-                end
-
-                if esp.enabled then
-                    local character = v.Character
-                    if not character or not character:FindFirstChild("HumanoidRootPart") then
+                    if not shouldRender then
+                        -- Hide any drawings that might still be visible from previous frames
                         drawingInstances.Box.Visible = false
                         drawingInstances.BoxOutline.Visible = false
                         drawingInstances.Health.Visible = false
@@ -804,113 +815,137 @@ spawn(function()
                         drawingInstances.HealthText.Visible = false
                         continue
                     end
-                    
-                    local humanoidRootPart = character.HumanoidRootPart
-                    local success, _, onscreen = pcall(function()
-                        return Camera:WorldToViewportPoint(humanoidRootPart.Position)
-                    end)
-                    if not success then continue end
-                    
-                    local distfromchar = (Camera.CFrame.Position - humanoidRootPart.Position).Magnitude
-                    if esp.renderdistance < distfromchar then 
+
+                    -- Past this point, the player is valid for ESP rendering
+
+                    if not isAlive(v) then
                         drawingInstances.Box.Visible = false
                         drawingInstances.BoxOutline.Visible = false
                         drawingInstances.Health.Visible = false
                         drawingInstances.HealthOutline.Visible = false
                         drawingInstances.Name.Visible = false
                         drawingInstances.HealthText.Visible = false
-                    else
-                        if onscreen then
-                            local boxSize, boxPosition = calculateBoxSizeAndPosition(character)
-                            if boxSize and boxPosition then
-                                if esp.box then
-                                    drawingInstances.Box.Size = boxSize
-                                    drawingInstances.Box.Position = boxPosition
-                                    drawingInstances.Box.Visible = true
-                                    drawingInstances.Box.Color = esp.boxcolor
-                                    drawingInstances.BoxOutline.Size = boxSize
-                                    drawingInstances.BoxOutline.Position = boxPosition
-                                    drawingInstances.BoxOutline.Visible = true
-                                    drawingInstances.BoxOutline.Color = esp.boxoutline
-                                    if esp.fading then
-                                        drawingInstances.Box.Transparency = 1 - (math.sin(tick() * esp.espfadespeed) + 1) / 2
-                                        drawingInstances.BoxOutline.Transparency = 1 - (math.sin(tick() * esp.espfadespeed) + 1) / 2
-                                    else
-                                        drawingInstances.Box.Transparency = 1 - esp.boxtransparency
-                                        drawingInstances.BoxOutline.Transparency = 1 - esp.boxoutlinetransparency
-                                    end
-                                else
-                                    drawingInstances.Box.Visible = false
-                                    drawingInstances.BoxOutline.Visible = false
-                                end
+                        continue
+                    end
 
-                                if esp.health then
-                                    local humanoid = character:FindFirstChildOfClass("Humanoid")
-                                    if humanoid and humanoid.Health and humanoid.MaxHealth and humanoid.MaxHealth > 0 then
-                                        local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-                                        local healthBarHeight = boxSize.Y * healthPercent
-                                        drawingInstances.Health.From = Vector2.new(boxPosition.X - 6, boxPosition.Y + boxSize.Y)
-                                        drawingInstances.Health.To = Vector2.new(boxPosition.X - 6, boxPosition.Y + boxSize.Y - healthBarHeight)
-                                        drawingInstances.Health.Visible = true
-                                        drawingInstances.Health.Color = esp.healthcolor
-                                        drawingInstances.HealthOutline.From = Vector2.new(boxPosition.X - 7, boxPosition.Y + boxSize.Y + 1)
-                                        drawingInstances.HealthOutline.To = Vector2.new(boxPosition.X - 5, boxPosition.Y - 1)
-                                        drawingInstances.HealthOutline.Visible = true
-                                        drawingInstances.HealthOutline.Color = esp.healthoutline
-                                        
-                                        if esp.healthbartext then
-                                            drawingInstances.HealthText.Text = math.floor(humanoid.Health)
-                                            drawingInstances.HealthText.Position = Vector2.new(boxPosition.X - 20, boxPosition.Y + boxSize.Y/2)
-                                            drawingInstances.HealthText.Visible = true
-                                            drawingInstances.HealthText.Color = esp.healthbartextcolor
-                                        else
-                                            drawingInstances.HealthText.Visible = false
-                                        end
-                                    end
-                                else
-                                    drawingInstances.Health.Visible = false
-                                    drawingInstances.HealthOutline.Visible = false
-                                    drawingInstances.HealthText.Visible = false
-                                end
-
-                                if esp.name then
-                                    local humanoid = character:FindFirstChildOfClass("Humanoid")
-                                    if humanoid and humanoid.DisplayName then
-                                        drawingInstances.Name.Visible = true
-                                        drawingInstances.Name.Text = string.format("<%s>", humanoid.DisplayName)
-                                        drawingInstances.Name.Position = Vector2.new(boxSize.X/2 + boxPosition.X, boxPosition.Y - 16)
-                                        drawingInstances.Name.Color = esp.namecolor
-                                        if esp.fading then
-                                            drawingInstances.Name.Transparency = 1 - (math.sin(tick() * esp.espfadespeed) + 1) / 2
-                                        else
-                                            drawingInstances.Name.Transparency = 1 - esp.nametransparency
-                                        end
-                                    else
-                                        drawingInstances.Name.Visible = false
-                                    end
-                                else
-                                    drawingInstances.Name.Visible = false
-                                end
-                            end
-                        else
+                    if esp.enabled then
+                        local character = v.Character
+                        if not character or not character:FindFirstChild("HumanoidRootPart") then
                             drawingInstances.Box.Visible = false
                             drawingInstances.BoxOutline.Visible = false
                             drawingInstances.Health.Visible = false
                             drawingInstances.HealthOutline.Visible = false
                             drawingInstances.Name.Visible = false
                             drawingInstances.HealthText.Visible = false
+                            continue
                         end
+                        
+                        local humanoidRootPart = character.HumanoidRootPart
+                        local success, _, onscreen = pcall(function()
+                            return Camera:WorldToViewportPoint(humanoidRootPart.Position)
+                        end)
+                        if not success then continue end
+                        
+                        local distfromchar = (Camera.CFrame.Position - humanoidRootPart.Position).Magnitude
+                        if esp.renderdistance < distfromchar then 
+                            drawingInstances.Box.Visible = false
+                            drawingInstances.BoxOutline.Visible = false
+                            drawingInstances.Health.Visible = false
+                            drawingInstances.HealthOutline.Visible = false
+                            drawingInstances.Name.Visible = false
+                            drawingInstances.HealthText.Visible = false
+                        else
+                            if onscreen then
+                                local boxSize, boxPosition = calculateBoxSizeAndPosition(character)
+                                if boxSize and boxPosition then
+                                    if esp.box then
+                                        drawingInstances.Box.Size = boxSize
+                                        drawingInstances.Box.Position = boxPosition
+                                        drawingInstances.Box.Visible = true
+                                        drawingInstances.Box.Color = esp.boxcolor
+                                        drawingInstances.BoxOutline.Size = boxSize
+                                        drawingInstances.BoxOutline.Position = boxPosition
+                                        drawingInstances.BoxOutline.Visible = true
+                                        drawingInstances.BoxOutline.Color = esp.boxoutline
+                                        if esp.fading then
+                                            drawingInstances.Box.Transparency = 1 - (math.sin(tick() * esp.espfadespeed) + 1) / 2
+                                            drawingInstances.BoxOutline.Transparency = 1 - (math.sin(tick() * esp.espfadespeed) + 1) / 2
+                                        else
+                                            drawingInstances.Box.Transparency = 1 - esp.boxtransparency
+                                            drawingInstances.BoxOutline.Transparency = 1 - esp.boxoutlinetransparency
+                                        end
+                                    else
+                                        drawingInstances.Box.Visible = false
+                                        drawingInstances.BoxOutline.Visible = false
+                                    end
+
+                                    if esp.health then
+                                        local humanoid = character:FindFirstChildOfClass("Humanoid")
+                                        if humanoid and humanoid.Health and humanoid.MaxHealth and humanoid.MaxHealth > 0 then
+                                            local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+                                            local healthBarHeight = boxSize.Y * healthPercent
+                                            drawingInstances.Health.From = Vector2.new(boxPosition.X - 6, boxPosition.Y + boxSize.Y)
+                                            drawingInstances.Health.To = Vector2.new(boxPosition.X - 6, boxPosition.Y + boxSize.Y - healthBarHeight)
+                                            drawingInstances.Health.Visible = true
+                                            drawingInstances.Health.Color = esp.healthcolor
+                                            drawingInstances.HealthOutline.From = Vector2.new(boxPosition.X - 7, boxPosition.Y + boxSize.Y + 1)
+                                            drawingInstances.HealthOutline.To = Vector2.new(boxPosition.X - 5, boxPosition.Y - 1)
+                                            drawingInstances.HealthOutline.Visible = true
+                                            drawingInstances.HealthOutline.Color = esp.healthoutline
+                                            
+                                            if esp.healthbartext then
+                                                drawingInstances.HealthText.Text = math.floor(humanoid.Health)
+                                                drawingInstances.HealthText.Position = Vector2.new(boxPosition.X - 20, boxPosition.Y + boxSize.Y/2)
+                                                drawingInstances.HealthText.Visible = true
+                                                drawingInstances.HealthText.Color = esp.healthbartextcolor
+                                            else
+                                                drawingInstances.HealthText.Visible = false
+                                            end
+                                        end
+                                    else
+                                        drawingInstances.Health.Visible = false
+                                        drawingInstances.HealthOutline.Visible = false
+                                        drawingInstances.HealthText.Visible = false
+                                    end
+
+                                    if esp.name then
+                                        local humanoid = character:FindFirstChildOfClass("Humanoid")
+                                        if humanoid and humanoid.DisplayName then
+                                            drawingInstances.Name.Visible = true
+                                            drawingInstances.Name.Text = string.format("<%s>", humanoid.DisplayName)
+                                            drawingInstances.Name.Position = Vector2.new(boxSize.X/2 + boxPosition.X, boxPosition.Y - 16)
+                                            drawingInstances.Name.Color = esp.namecolor
+                                            if esp.fading then
+                                                drawingInstances.Name.Transparency = 1 - (math.sin(tick() * esp.espfadespeed) + 1) / 2
+                                            else
+                                                drawingInstances.Name.Transparency = 1 - esp.nametransparency
+                                            end
+                                        else
+                                            drawingInstances.Name.Visible = false
+                                        end
+                                    else
+                                        drawingInstances.Name.Visible = false
+                                    end
+                                end
+                            else
+                                drawingInstances.Box.Visible = false
+                                drawingInstances.BoxOutline.Visible = false
+                                drawingInstances.Health.Visible = false
+                                drawingInstances.HealthOutline.Visible = false
+                                drawingInstances.Name.Visible = false
+                                drawingInstances.HealthText.Visible = false
+                            end
+                        end
+                    else
+                        drawingInstances.Box.Visible = false
+                        drawingInstances.BoxOutline.Visible = false
+                        drawingInstances.Health.Visible = false
+                        drawingInstances.HealthOutline.Visible = false
+                        drawingInstances.Name.Visible = false
+                        drawingInstances.HealthText.Visible = false
                     end
-                else
-                    drawingInstances.Box.Visible = false
-                    drawingInstances.BoxOutline.Visible = false
-                    drawingInstances.Health.Visible = false
-                    drawingInstances.HealthOutline.Visible = false
-                    drawingInstances.Name.Visible = false
-                    drawingInstances.HealthText.Visible = false
                 end
             end
-        end
         end)
     end
 end)
@@ -940,14 +975,39 @@ Players.PlayerRemoving:Connect(function(targetPlayer)
 end)
 
 
+local speedVelocity = nil
 local function updateSpeed()
-    if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        if speedEnabled then
-            humanoid.WalkSpeed = speedValue
-        else
-            humanoid.WalkSpeed = 16
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+    
+    local humanoidRootPart = player.Character.HumanoidRootPart
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    if speedEnabled then
+        if not speedVelocity then
+            speedVelocity = Instance.new("BodyVelocity")
+            speedVelocity.MaxForce = Vector3.new(100000, 0, 100000)
+            speedVelocity.Parent = humanoidRootPart
         end
+        
+        -- Get the movement direction from the Humanoid
+        local moveDirection = humanoid.MoveDirection
+        if moveDirection.Magnitude > 0 then
+            speedVelocity.Velocity = moveDirection * (speedValue * 1.5)
+        else
+            speedVelocity.Velocity = Vector3.new(0, 0, 0)
+        end
+    else
+        if speedVelocity then
+            speedVelocity:Destroy()
+            speedVelocity = nil
+        end
+        -- Try to reset to normal speed
+        pcall(function()
+            humanoid.WalkSpeed = 16
+        end)
     end
 end
 
@@ -994,7 +1054,9 @@ local function updateFly()
             moveVector = moveVector - Vector3.new(0, 1, 0)
         end
         
-        bodyVelocity.Velocity = moveVector * speedValue
+        -- Use a fixed fly speed instead of the walk speed value
+        local flySpeed = 50
+        bodyVelocity.Velocity = moveVector * flySpeed
     else
         if bodyVelocity then
             bodyVelocity:Destroy()
@@ -1033,6 +1095,29 @@ local function Create(instanceType, properties)
     return inst
 end
 
+-- Utility: subtle 1-px border around a frame
+local function addBorder(frame)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(32,34,37)
+    stroke.Thickness = 1
+    stroke.Parent = frame
+end
+
+-- Utility: hover animation for buttons
+local function addHoverHighlight(btn)
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = Color3.fromRGB(64, 68, 75)
+        }):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        if activeTab.button ~= btn then
+            TweenService:Create(btn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                BackgroundColor3 = Color3.fromRGB(47, 49, 54)
+            }):Play()
+        end
+    end)
+end
 
 local tabColumn = Create("Frame", {
     Name = "TabColumn",
@@ -1061,6 +1146,7 @@ local sectionColumn = Create("Frame", {
     Size = UDim2.new(0, 220, 1, 0),
     Position = UDim2.new(0, 72, 0, 0),
 })
+addBorder(sectionColumn)
 
 local sectionHeader = Create("TextLabel", {
     Name = "SectionHeader",
@@ -1118,8 +1204,7 @@ local contentColumn = Create("Frame", {
     Size = UDim2.new(1, -292 - 180, 1, 0),
     Position = UDim2.new(0, 292, 0, 0),
 })
-Create("UICorner", {Parent = contentColumn, CornerRadius = UDim.new(0, 8)})
-contentColumn.ClipsDescendants = true
+addBorder(contentColumn)
 
 local contentHeader = Create("TextLabel", {
     Name = "ContentHeader",
@@ -1173,7 +1258,7 @@ local leaderboardColumn = Create("Frame", {
     Size = UDim2.new(0, 180, 1, 0),
     Position = UDim2.new(1, -180, 0, 0),
 })
-Create("UICorner", {Parent = leaderboardColumn, CornerRadius = UDim.new(0, 8)})
+addBorder(leaderboardColumn)
 
 local lbHeader = Create("TextLabel", {
     Name = "LBHeader",
@@ -2031,6 +2116,9 @@ end)
 createSlider(aimbotContent, "Prediction", 0, 50, 10, function(value)
     aimbotPrediction = value
 end)
+createToggle(aimbotContent, "Wall Check", function(enabled)
+    wallCheckEnabled = enabled
+end)
 
 local fovContent = createSection(mainTabData, "FOV Settings", "⭕")
 createToggle(fovContent, "FOV Enabled", function(enabled)
@@ -2131,49 +2219,55 @@ local function applyMidShaders()
     dof.Parent = Lighting
 end
 
+-- NEW: Glossy shader preset
+local function applyGlossyShaders()
+    clearShaders()
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Brightness = 0.08
+    cc.Contrast = 0.2
+    cc.Saturation = 0.15
+    cc.TintColor = Color3.fromRGB(230, 235, 255)
+    cc.Parent = Lighting
+
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 1
+    bloom.Size = 40
+    bloom.Threshold = 0.6
+    bloom.Parent = Lighting
+
+    local blur = Instance.new("BlurEffect")
+    blur.Size = 1
+    blur.Parent = Lighting
+end
+
 local function setShaderMode(mode)
     shaderState.mode = mode
     if mode == "Ultra Shaders" then
         applyUltraShaders()
     elseif mode == "Mid Shaders" then
         applyMidShaders()
+    elseif mode == "Glossy" then
+        applyGlossyShaders()
     else
         clearShaders()
     end
 end
 
 local shadersContent = createSection(mainTabData, "Shaders", "✨")
-Create("TextLabel", {
-    Parent = shadersContent,
-    BackgroundTransparency = 1,
-    Size = UDim2.new(1, 0, 0, 22),
-    Font = Enum.Font.SourceSansSemibold,
-    Text = "Shader Preset:",
-    TextColor3 = Color3.fromRGB(220, 221, 222),
-    TextSize = 16,
-    TextXAlignment = Enum.TextXAlignment.Left,
-})
 
-local shaderDropdown = createDropdown(shadersContent, "Mode", {"None", "Ultra Shaders", "Mid Shaders"}, "None", function(option)
+local shaderDropdown = createDropdown(shadersContent, "Mode", {"None", "Ultra Shaders", "Mid Shaders", "Glossy"}, "None", function(option)
     setShaderMode(option)
 end)
 
--- Add a description
-Create("TextLabel", {
-    Parent = shadersContent,
-    BackgroundTransparency = 1,
-    Size = UDim2.new(1, 0, 0, 18),
-    Font = Enum.Font.SourceSans,
-    Text = "Ultra = cinematic, Mid = performance, None = default",
-    TextColor3 = Color3.fromRGB(185, 187, 190),
-    TextSize = 13,
-    TextXAlignment = Enum.TextXAlignment.Left,
-})
 -- SHADERS TAB END
 
 local movementContent = createSection(mainTabData, "Movement", "#")
-createSlider(movementContent, "Speed", 16, 100, 16, function(value)
+createSlider(movementContent, "Speed", 16, 500, 16, function(value)
     speedValue = value
+    updateSpeed()
+end)
+createToggle(movementContent, "Speed", function(enabled)
+    speedEnabled = enabled
     updateSpeed()
 end)
 createToggle(movementContent, "Fly", function(enabled)
@@ -2367,7 +2461,7 @@ end
 local originalSizes = {}
 
 
-createSlider(guiCustomContent, "Transparency", 0, 90, 0, function(value)
+createSlider(guiCustomContent, "Transparency", 0, 90, 30, function(value)
     guiSettings.transparency = value / 100
     
 
@@ -2399,7 +2493,7 @@ createSlider(guiCustomContent, "Transparency", 0, 90, 0, function(value)
 end)
 
 
-createSlider(guiCustomContent, "Scale", 50, 150, 100, function(value)
+createSlider(guiCustomContent, "Scale", 50, 150, 85, function(value)
     guiSettings.scale = value / 100
     
 
@@ -2520,6 +2614,7 @@ local mainTabButton = Create("TextButton", {
     AutoButtonColor = false,
 })
 Create("UICorner", {Parent = mainTabButton, CornerRadius = UDim.new(0.5, 0)})
+addHoverHighlight(mainTabButton)
 local settingsTabButton = Create("TextButton", {
     Name = "SettingsTab",
     Parent = tabColumn,
@@ -2533,6 +2628,7 @@ local settingsTabButton = Create("TextButton", {
     AutoButtonColor = false,
 })
 Create("UICorner", {Parent = settingsTabButton, CornerRadius = UDim.new(0.5, 0)})
+addHoverHighlight(settingsTabButton)
 
 
 mainTabButton.MouseButton1Click:Connect(function()
@@ -2559,13 +2655,30 @@ local function createPlayerPopup(targetPlayer, parentFrame)
         Name = "PlayerPopup",
         Parent = screenGui,
         BackgroundColor3 = Color3.fromRGB(32, 34, 37),
-        BorderSizePixel = 1,
-        BorderColor3 = Color3.fromRGB(20, 22, 25),
-        Size = UDim2.new(0, 150, 0, 150),
+        BorderSizePixel = 0,
+        Size = UDim2.new(0, 160, 0, 180),
         Position = UDim2.new(0, Mouse.X, 0, Mouse.Y),
-        ZIndex = 1000,
+        ZIndex = 1001,
     })
-    Create("UICorner", {Parent = popup, CornerRadius = UDim.new(0, 6)})
+    Create("UICorner", {Parent = popup, CornerRadius = UDim.new(0, 10)})
+    
+    -- Discord-style glow behind popup (placed outside to avoid layout interference)
+    local glowOffset = 10
+    local popupGlow = Create("ImageLabel", {
+        Name = "PopupGlow",
+        Parent = screenGui,
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://1316045217",
+        ImageColor3 = Color3.fromRGB(114, 137, 218),
+        ImageTransparency = 0.35,
+        ScaleType = Enum.ScaleType.Slice,
+        SliceCenter = Rect.new(10, 10, 118, 118),
+        Size = UDim2.new(popup.Size.X.Scale, popup.Size.X.Offset + glowOffset*2,
+                        popup.Size.Y.Scale, popup.Size.Y.Offset + glowOffset*2),
+        Position = UDim2.new(popup.Position.X.Scale, popup.Position.X.Offset - glowOffset,
+                             popup.Position.Y.Scale, popup.Position.Y.Offset - glowOffset),
+        ZIndex = popup.ZIndex - 1,
+    })
     
     local layout = Create("UIListLayout", {
         Parent = popup,
@@ -2750,11 +2863,29 @@ local function createPlayerPopup(targetPlayer, parentFrame)
     end)
     
     playerPopups[targetPlayer] = popup
+
+    -- Keep glow aligned with popup position/size
+    popup:GetPropertyChangedSignal("Position"):Connect(function()
+        popupGlow.Position = UDim2.new(popup.Position.X.Scale, popup.Position.X.Offset - glowOffset,
+                                       popup.Position.Y.Scale, popup.Position.Y.Offset - glowOffset)
+    end)
+    popup:GetPropertyChangedSignal("Size"):Connect(function()
+        popupGlow.Size = UDim2.new(popup.Size.X.Scale, popup.Size.X.Offset + glowOffset*2,
+                                   popup.Size.Y.Scale, popup.Size.Y.Offset + glowOffset*2)
+    end)
+
+    -- Destroy glow when popup is destroyed
+    popup.Destroying:Connect(function()
+        if popupGlow and popupGlow.Parent then
+            popupGlow:Destroy()
+        end
+    end)
 end
 
 
 local statusFrames = {}
 local lastMove = {}
+local playerEntries = {}
 
 
 local function addPlayer(player)
@@ -2818,6 +2949,7 @@ local function addPlayer(player)
     end)
     statusFrames[player] = statusDot
     lastMove[player] = os.clock()
+    playerEntries[player] = entry
 
 
     player.CharacterAdded:Connect(function(char)
@@ -2834,10 +2966,16 @@ local function addPlayer(player)
 end
 
 local function removePlayer(player)
-    if statusFrames[player] then
-        statusFrames[player]:Destroy()
-        statusFrames[player] = nil
+    -- Remove the leaderboard UI entry
+    if playerEntries[player] then
+        playerEntries[player]:Destroy()
+        playerEntries[player] = nil
     end
+
+    -- Clean up status dot mapping (entry destruction handles instance removal)
+    statusFrames[player] = nil
+
+    -- Remove last movement timestamp
     lastMove[player] = nil
 end
 
@@ -2855,7 +2993,6 @@ end)
 
 
 RunService.Heartbeat:Connect(function()
-
     local now = os.clock()
     for player, dot in pairs(statusFrames) do
         local last = lastMove[player] or 0
@@ -2863,7 +3000,6 @@ RunService.Heartbeat:Connect(function()
         if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
             local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
             if humanoid.MoveDirection.Magnitude > 0 then
-
                 dot.BackgroundColor3 = Color3.fromRGB(67, 181, 129)
                 lastMove[player] = now
             else
@@ -2877,10 +3013,12 @@ RunService.Heartbeat:Connect(function()
             dot.BackgroundColor3 = Color3.fromRGB(250, 166, 26)
         end
     end
-    
 
+    -- Continuously update speed and fly
+    if speedEnabled then
+        updateSpeed()
+    end
     
-
     if flyEnabled then
         updateFly()
     end
@@ -2888,6 +3026,12 @@ end)
 
 
 Players.LocalPlayer.CharacterAdded:Connect(function()
+    -- Clean up old speedVelocity if it exists
+    if speedVelocity then
+        speedVelocity:Destroy()
+        speedVelocity = nil
+    end
+    
     wait(1)
     updateSpeed()
     updateJump()
@@ -2896,8 +3040,19 @@ Players.LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
+-- Clean up when the script stops
+game:GetService("Players").LocalPlayer.CharacterRemoving:Connect(function()
+    if speedVelocity then
+        speedVelocity:Destroy()
+        speedVelocity = nil
+    end
+end)
 
 
+
+
+-- Initialize speed on startup
+updateSpeed()
 
 print("gzcord - Functional Version Loaded!")
 print("Aimbot: " .. aimbotKeybind .. " to activate")
@@ -2969,18 +3124,21 @@ local shadersSection = createSection(shadersTabData, "Shaders", "✨")
 Create("TextLabel", {
     Parent = shadersSection,
     BackgroundTransparency = 1,
-    Size = UDim2.new(1, 0, 0, 28),
-    Font = Enum.Font.SourceSansBold,
-    Text = "Shader Presets",
-    TextColor3 = Color3.fromRGB(114, 137, 218),
-    TextSize = 18,
+    Size = UDim2.new(1, 0, 0, 46),
+    Font = Enum.Font.SourceSans,
+    Text = "💎 Ultra = Cinematic, high-quality look.\n✨ Mid = Performance-friendly, balanced look.\n🌟 Glossy = Shiny gloss finish.\n🚫 None = Default Roblox lighting.",
+    TextColor3 = Color3.fromRGB(185, 187, 190),
+    TextSize = 13,
     TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+    LayoutOrder = 1,
 })
 
 local shaderButtons = {}
 local shaderModes = {
     {name = "Ultra Shaders", icon = "💎", func = applyUltraShaders, desc = "Cinematic, high-quality look."},
     {name = "Mid Shaders", icon = "✨", func = applyMidShaders, desc = "Performance-friendly, balanced look."},
+    {name = "Glossy", icon = "🌟", func = applyGlossyShaders, desc = "Shiny gloss finish."},
     {name = "No Shaders", icon = "🚫", func = clearShaders, desc = "Default Roblox lighting."},
 }
 local activeShader = nil
@@ -2995,23 +3153,10 @@ for i, mode in ipairs(shaderModes) do
         TextColor3 = Color3.fromRGB(220, 221, 222),
         TextSize = 16,
         AutoButtonColor = true,
-        LayoutOrder = i,
+        LayoutOrder = i + 2, -- shift order so buttons come after description block
     })
     Create("UICorner", {Parent = btn, CornerRadius = UDim.new(0, 6)})
     Create("UIPadding", {Parent = btn, PaddingLeft = UDim.new(0, 10)})
-    local desc = Create("TextLabel", {
-        Parent = btn,
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -40, 1, 0),
-        Position = UDim2.new(0, 40, 0, 0),
-        Font = Enum.Font.SourceSans,
-        Text = mode.desc,
-        TextColor3 = Color3.fromRGB(185, 187, 190),
-        TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextYAlignment = Enum.TextYAlignment.Center,
-    })
-    desc.ZIndex = btn.ZIndex + 1
     shaderButtons[mode.name] = btn
     btn.MouseButton1Click:Connect(function()
         for _, b in pairs(shaderButtons) do
@@ -3043,6 +3188,7 @@ local shadersTabButton = Create("TextButton", {
     AutoButtonColor = false,
 })
 Create("UICorner", {Parent = shadersTabButton, CornerRadius = UDim.new(0.5, 0)})
+addHoverHighlight(shadersTabButton)
 
 shadersTabButton.MouseButton1Click:Connect(function()
     setActiveTab(shadersTabButton, shadersTabData)
@@ -3098,3 +3244,317 @@ end)
 -- Move leaderboard scroll below search box
 lbScroll.Position = UDim2.new(0, 0, 0, 88)
 lbScroll.Size = UDim2.new(1, 0, 1, -88)
+
+-- Ultra Shaders button
+local ultraBtn = Create("TextButton", {
+    Parent = shadersContent,
+    BackgroundColor3 = Color3.fromRGB(47, 49, 54),
+    Size = UDim2.new(1, 0, 0, 40),
+    Font = Enum.Font.SourceSansSemibold,
+    Text = "💎 Ultra Shaders",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 16,
+    AutoButtonColor = false,
+})
+Create("UICorner", {Parent = ultraBtn, CornerRadius = UDim.new(0, 6)})
+addHoverHighlight(ultraBtn)
+
+local ultraDesc = Create("TextLabel", {
+    Parent = shadersContent,
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 20),
+    Position = UDim2.new(0, 0, 0, 45),
+    Font = Enum.Font.SourceSans,
+    Text = "Cinematic, high-quality look",
+    TextColor3 = Color3.fromRGB(185, 187, 190),
+    TextSize = 14,
+})
+
+-- Mid Shaders button
+local midBtn = Create("TextButton", {
+    Parent = shadersContent,
+    BackgroundColor3 = Color3.fromRGB(47, 49, 54),
+    Size = UDim2.new(1, 0, 0, 40),
+    Position = UDim2.new(0, 0, 0, 75),
+    Font = Enum.Font.SourceSansSemibold,
+    Text = "✨ Mid Shaders",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 16,
+    AutoButtonColor = false,
+})
+Create("UICorner", {Parent = midBtn, CornerRadius = UDim.new(0, 6)})
+addHoverHighlight(midBtn)
+
+local midDesc = Create("TextLabel", {
+    Parent = shadersContent,
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 20),
+    Position = UDim2.new(0, 0, 0, 120),
+    Font = Enum.Font.SourceSans,
+    Text = "Performance-friendly, balanced look",
+    TextColor3 = Color3.fromRGB(185, 187, 190),
+    TextSize = 14,
+})
+
+-- No Shaders button
+local noShadersBtn = Create("TextButton", {
+    Parent = shadersContent,
+    BackgroundColor3 = Color3.fromRGB(47, 49, 54),
+    Size = UDim2.new(1, 0, 0, 40),
+    Position = UDim2.new(0, 0, 0, 150),
+    Font = Enum.Font.SourceSansSemibold,
+    Text = "🚫 No Shaders",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 16,
+    AutoButtonColor = false,
+})
+Create("UICorner", {Parent = noShadersBtn, CornerRadius = UDim.new(0, 6)})
+addHoverHighlight(noShadersBtn)
+
+local noShadersDesc = Create("TextLabel", {
+    Parent = shadersContent,
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 20),
+    Position = UDim2.new(0, 0, 0, 195),
+    Font = Enum.Font.SourceSans,
+    Text = "Default Roblox lighting",
+    TextColor3 = Color3.fromRGB(185, 187, 190),
+    TextSize = 14,
+})
+
+-- Track active shader
+local activeShaderBtn = nil
+
+local function setActiveShader(btn)
+    if activeShaderBtn then
+        TweenService:Create(activeShaderBtn, TweenInfo.new(0.15), {
+            BackgroundColor3 = Color3.fromRGB(47, 49, 54)
+        }):Play()
+    end
+    
+    if btn then
+        TweenService:Create(btn, TweenInfo.new(0.15), {
+            BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+        }):Play()
+    end
+    
+    activeShaderBtn = btn
+end
+
+ultraBtn.MouseButton1Click:Connect(function()
+    clearShaders()
+    
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 1
+    bloom.Size = 24
+    bloom.Threshold = 0.8
+    bloom.Parent = Lighting
+
+    local colorCorrection = Instance.new("ColorCorrectionEffect")
+    colorCorrection.Brightness = 0.1
+    colorCorrection.Contrast = 0.5
+    colorCorrection.Saturation = 0.5
+    colorCorrection.Parent = Lighting
+
+    local sunRays = Instance.new("SunRaysEffect")
+    sunRays.Intensity = 0.25
+    sunRays.Parent = Lighting
+
+    local blur = Instance.new("BlurEffect")
+    blur.Size = 3
+    blur.Parent = Lighting
+    
+    setActiveShader(ultraBtn)
+end)
+
+midBtn.MouseButton1Click:Connect(function()
+    clearShaders()
+    
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 0.5
+    bloom.Size = 12
+    bloom.Threshold = 0.9
+    bloom.Parent = Lighting
+
+    local colorCorrection = Instance.new("ColorCorrectionEffect")
+    colorCorrection.Brightness = 0.05
+    colorCorrection.Contrast = 0.2
+    colorCorrection.Saturation = 0.2
+    colorCorrection.Parent = Lighting
+    
+    setActiveShader(midBtn)
+end)
+
+noShadersBtn.MouseButton1Click:Connect(function()
+    clearShaders()
+    setActiveShader(nil)
+end)
+
+-- Apply initial transparency & scale after UI creation
+task.defer(function()
+    windowFrame.BackgroundTransparency = guiSettings.transparency
+    applyTransparencyToAll(windowFrame, guiSettings.transparency)
+
+    windowFrame.Size = UDim2.new(0, 800 * guiSettings.scale, 0, 500 * guiSettings.scale)
+    windowFrame.Position = UDim2.new(0.5, -400 * guiSettings.scale, 0.5, -250 * guiSettings.scale)
+    scaleAllElements(windowFrame, guiSettings.scale, originalSizes)
+end)
+
+-- CONFIGS SECTION ---------------------------------------------------
+local configsContent = createSection(settingsTabData, "Configs", "💾")
+
+-- UI elements
+local configRow = Create("Frame", {
+    Parent = configsContent,
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 30),
+})
+Create("UIListLayout", {
+    Parent = configRow,
+    FillDirection = Enum.FillDirection.Horizontal,
+    VerticalAlignment = Enum.VerticalAlignment.Center,
+    Padding = UDim.new(0, 6),
+})
+
+local nameBox = Create("TextBox", {
+    Parent = configRow,
+    BackgroundColor3 = Color3.fromRGB(54, 57, 63),
+    BorderSizePixel = 0,
+    Size = UDim2.new(0.5, -3, 1, 0),
+    Font = Enum.Font.SourceSans,
+    Text = "",
+    PlaceholderText = "Config name",
+    PlaceholderColor3 = Color3.fromRGB(185, 187, 190),
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+Create("UICorner", {Parent = nameBox, CornerRadius = UDim.new(0, 4)})
+
+local saveBtn = Create("TextButton", {
+    Parent = configRow,
+    BackgroundColor3 = Color3.fromRGB(67, 181, 129),
+    BorderSizePixel = 0,
+    Size = UDim2.new(0.25, -3, 1, 0),
+    Font = Enum.Font.SourceSansSemibold,
+    Text = "Save",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 14,
+    AutoButtonColor = false,
+})
+Create("UICorner", {Parent = saveBtn, CornerRadius = UDim.new(0, 4)})
+
+local loadBtn = Create("TextButton", {
+    Parent = configRow,
+    BackgroundColor3 = Color3.fromRGB(88, 101, 242),
+    BorderSizePixel = 0,
+    Size = UDim2.new(0.25, -3, 1, 0),
+    Font = Enum.Font.SourceSansSemibold,
+    Text = "Load",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 14,
+    AutoButtonColor = false,
+})
+Create("UICorner", {Parent = loadBtn, CornerRadius = UDim.new(0, 4)})
+
+-- Helper to get serializable snapshot
+local function getConfigSnapshot()
+    local espCopy = {}
+    for k, v in pairs(esp) do
+        if k ~= "players" then
+            espCopy[k] = v
+        end
+    end
+
+    return {
+        aimbotEnabled = aimbotEnabled,
+        aimbotSmoothness = aimbotSmoothness,
+        aimbotPrediction = aimbotPrediction,
+        aimbotKeybind = aimbotKeybind,
+        aimbotToggleMode = aimbotToggleMode,
+        esp = espCopy,
+        guiSettings = guiSettings,
+        speedValue = speedValue,
+        jumpValue = jumpValue,
+        flyEnabled = flyEnabled,
+        antiLockEnabled = antiLockEnabled,
+    }
+end
+
+-- Apply loaded config
+local function applyConfig(cfg)
+    if not cfg or typeof(cfg) ~= "table" then return end
+
+    -- Basic fields
+    aimbotSmoothness = cfg.aimbotSmoothness or aimbotSmoothness
+    aimbotPrediction = cfg.aimbotPrediction or aimbotPrediction
+    aimbotKeybind = cfg.aimbotKeybind or aimbotKeybind
+    aimbotToggleMode = cfg.aimbotToggleMode or aimbotToggleMode
+
+    if cfg.aimbotEnabled ~= nil then
+        aimbotEnabled = cfg.aimbotEnabled
+        if aimbotEnabled then
+            startAimbot()
+        else
+            stopAimbot()
+        end
+    end
+
+    if cfg.esp then
+        for k, v in pairs(cfg.esp) do
+            if k ~= "players" then
+                esp[k] = v
+            end
+        end
+    end
+
+    if cfg.guiSettings then
+        for k, v in pairs(cfg.guiSettings) do
+            guiSettings[k] = v
+        end
+    end
+
+    speedValue = cfg.speedValue or speedValue
+    jumpValue = cfg.jumpValue or jumpValue
+    flyEnabled = cfg.flyEnabled or flyEnabled
+    antiLockEnabled = cfg.antiLockEnabled or antiLockEnabled
+
+    updateSpeed()
+    updateJump()
+    updateFly()
+    if antiLockEnabled then startAntiLock() else stopAntiLock() end
+end
+
+-- File helpers
+local configFolder = "gzcord_configs"
+if pcall(function() return isfolder and not isfolder(configFolder) end) then
+    makefolder(configFolder)
+end
+
+local function saveConfig(name)
+    if name == "" then return end
+    local path = configFolder .. "/" .. name .. ".json"
+    local data = HttpService:JSONEncode(getConfigSnapshot())
+    pcall(function() writefile(path, data) end)
+end
+
+local function loadConfig(name)
+    if name == "" then return end
+    local path = configFolder .. "/" .. name .. ".json"
+    if not pcall(function() return isfile and isfile(path) end) then return end
+    local success, contents = pcall(function() return readfile(path) end)
+    if success and contents then
+        local success2, decoded = pcall(function() return HttpService:JSONDecode(contents) end)
+        if success2 then
+            applyConfig(decoded)
+        end
+    end
+end
+
+saveBtn.MouseButton1Click:Connect(function()
+    saveConfig(nameBox.Text)
+end)
+
+loadBtn.MouseButton1Click:Connect(function()
+    loadConfig(nameBox.Text)
+end)
