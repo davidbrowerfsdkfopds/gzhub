@@ -19,7 +19,7 @@ local aimbotToggleMode = false
 local aimbotToggleActive = false
 local aimbotConnection = nil
 local currentTarget = nil
-local wallCheckEnabled = false -- New variable for wall detection toggle
+local wallCheckEnabled = false 
 
 
 local fovEnabled = false
@@ -74,10 +74,10 @@ local windowCorner = Instance.new("UICorner")
 windowCorner.CornerRadius = UDim.new(0, 12)
 windowCorner.Parent = windowFrame
 
--- Drop shadow behind window
+
 local windowShadow = Instance.new("ImageLabel")
 windowShadow.Name = "WindowShadow"
-windowShadow.Image = "rbxassetid://1316045217" -- soft shadow asset
+windowShadow.Image = "rbxassetid://1316045217" 
 windowShadow.BackgroundTransparency = 1
 windowShadow.ScaleType = Enum.ScaleType.Slice
 windowShadow.SliceCenter = Rect.new(10,10,118,118)
@@ -249,7 +249,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 
--- Loading Screen Overlay
+
 local loadingOverlay = Instance.new("Frame")
 loadingOverlay.Name = "LoadingOverlay"
 loadingOverlay.BackgroundColor3 = Color3.fromRGB(32, 34, 37)
@@ -264,7 +264,7 @@ local loadingCorner = Instance.new("UICorner")
 loadingCorner.CornerRadius = UDim.new(0, 12)
 loadingCorner.Parent = loadingOverlay
 
--- Blur effect for loading screen
+
 local loadingBlur = Instance.new("Frame")
 loadingBlur.Name = "LoadingBlur"
 loadingBlur.BackgroundColor3 = Color3.fromRGB(47, 49, 54)
@@ -278,7 +278,7 @@ local blurCorner = Instance.new("UICorner")
 blurCorner.CornerRadius = UDim.new(0, 12)
 blurCorner.Parent = loadingBlur
 
--- Loading text
+
 local loadingText = Instance.new("TextLabel")
 loadingText.Name = "LoadingText"
 loadingText.BackgroundTransparency = 1
@@ -292,7 +292,7 @@ loadingText.TextXAlignment = Enum.TextXAlignment.Center
 loadingText.TextYAlignment = Enum.TextYAlignment.Center
 loadingText.Parent = loadingOverlay
 
--- Loading dots animation
+
 local loadingDots = Instance.new("TextLabel")
 loadingDots.Name = "LoadingDots"
 loadingDots.BackgroundTransparency = 1
@@ -306,7 +306,7 @@ loadingDots.TextXAlignment = Enum.TextXAlignment.Center
 loadingDots.TextYAlignment = Enum.TextYAlignment.Center
 loadingDots.Parent = loadingOverlay
 
--- Animate loading dots
+
 spawn(function()
     local dots = {"", ".", "..", "..."}
     local index = 1
@@ -318,7 +318,7 @@ spawn(function()
     end
 end)
 
--- Progress bar
+
 local progressBarBG = Instance.new("Frame")
 progressBarBG.Name = "ProgressBarBG"
 progressBarBG.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
@@ -343,7 +343,7 @@ local progressCorner = Instance.new("UICorner")
 progressCorner.CornerRadius = UDim.new(0, 3)
 progressCorner.Parent = progressBar
 
--- Animate progress bar
+
 spawn(function()
     local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     local tween = TweenService:Create(progressBar, tweenInfo, {
@@ -351,7 +351,7 @@ spawn(function()
     })
     tween:Play()
     
-    -- Remove loading screen after animation
+    
     tween.Completed:Connect(function()
         wait(0.5)
         local fadeInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -463,7 +463,7 @@ local function hasLineOfSight(targetPlayer)
 end
 
 local function getClosestPlayer()
-    -- Determine if there are any priority targets
+    
     local hasPriority = false
     for plr, isPriority in pairs(priorityPlayers) do
         if isPriority then
@@ -515,7 +515,7 @@ local function aimAt(targetPlayer)
     local smoothness = aimbotSmoothness / 100
     Camera.CFrame = currentCFrame:Lerp(targetCFrame, 1 - smoothness)
 
-    -- AimeView logic: set camera to follow target's head
+    
     if aimeViewEnabled and aimbotEnabled and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
         Camera.CFrame = CFrame.new(targetPlayer.Character.Head.Position + Vector3.new(0, 1.5, 0), targetPlayer.Character.Head.Position + targetPlayer.Character.Head.CFrame.LookVector * 10)
     end
@@ -597,7 +597,7 @@ local function stopAimbot()
     end
 end
 
--- Toggle key detection for aimbot
+
 local lastKeyState = {}
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed or not aimbotEnabled or not aimbotToggleMode then return end
@@ -791,7 +791,7 @@ end
 spawn(function()
     while task.wait() do
         pcall(function()
-            -- Determine if any priority players exist for ESP
+            
             local priorityActiveESP = false
             for plr, flag in pairs(priorityPlayers) do
                 if flag then priorityActiveESP = true break end
@@ -802,11 +802,11 @@ spawn(function()
                     local drawingInstances = esp.players[v]
                     if not drawingInstances then continue end
 
-                    -- Decide if this player's ESP should be shown based on whitelist/priority status
+                    
                     local shouldRender = not whitelistedPlayers[v] and (not priorityActiveESP or priorityPlayers[v])
 
                     if not shouldRender then
-                        -- Hide any drawings that might still be visible from previous frames
+                        
                         drawingInstances.Box.Visible = false
                         drawingInstances.BoxOutline.Visible = false
                         drawingInstances.Health.Visible = false
@@ -816,7 +816,7 @@ spawn(function()
                         continue
                     end
 
-                    -- Past this point, the player is valid for ESP rendering
+                    
 
                     if not isAlive(v) then
                         drawingInstances.Box.Visible = false
@@ -992,7 +992,7 @@ local function updateSpeed()
             speedVelocity.Parent = humanoidRootPart
         end
         
-        -- Get the movement direction from the Humanoid
+        
         local moveDirection = humanoid.MoveDirection
         if moveDirection.Magnitude > 0 then
             speedVelocity.Velocity = moveDirection * (speedValue * 1.5)
@@ -1004,7 +1004,7 @@ local function updateSpeed()
             speedVelocity:Destroy()
             speedVelocity = nil
         end
-        -- Try to reset to normal speed
+        
         pcall(function()
             humanoid.WalkSpeed = 16
         end)
@@ -1054,7 +1054,7 @@ local function updateFly()
             moveVector = moveVector - Vector3.new(0, 1, 0)
         end
         
-        -- Use a fixed fly speed instead of the walk speed value
+        
         local flySpeed = 50
         bodyVelocity.Velocity = moveVector * flySpeed
     else
@@ -1065,7 +1065,7 @@ local function updateFly()
     end
 end
 
--- Anti-Lock: small random jitters in HumanoidRootPart each RenderStepped frame
+
 local function startAntiLock()
     if antiLockConnection then return end
     antiLockConnection = RunService.RenderStepped:Connect(function()
@@ -1095,7 +1095,7 @@ local function Create(instanceType, properties)
     return inst
 end
 
--- Utility: subtle 1-px border around a frame
+
 local function addBorder(frame)
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(32,34,37)
@@ -1103,7 +1103,7 @@ local function addBorder(frame)
     stroke.Parent = frame
 end
 
--- Utility: hover animation for buttons
+
 local function addHoverHighlight(btn)
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -1390,7 +1390,7 @@ end
 
 
 local function createDropdown(parent, label, options, default, callback)
-    -- Validate inputs
+    
     if not parent or not label or not options or #options == 0 then
         warn("createDropdown: Invalid parameters provided")
         return nil
@@ -1398,7 +1398,7 @@ local function createDropdown(parent, label, options, default, callback)
     
     local selectedValue = default or options[1]
     
-    -- Main container frame
+    
     local frame = Create("Frame", {
         Name = label .. "Dropdown",
         Parent = parent,
@@ -1406,7 +1406,7 @@ local function createDropdown(parent, label, options, default, callback)
         Size = UDim2.new(1, 0, 0, 30),
     })
     
-    -- Layout for horizontal arrangement
+    
     Create("UIListLayout", {
         Parent = frame,
         FillDirection = Enum.FillDirection.Horizontal,
@@ -1415,7 +1415,7 @@ local function createDropdown(parent, label, options, default, callback)
         Padding = UDim.new(0, 8),
     })
     
-    -- Label
+    
     Create("TextLabel", {
         Parent = frame,
         BackgroundTransparency = 1,
@@ -1429,7 +1429,7 @@ local function createDropdown(parent, label, options, default, callback)
         LayoutOrder = 1,
     })
     
-    -- Dropdown button
+    
     local dropdown = Create("TextButton", {
         Parent = frame,
         BackgroundColor3 = Color3.fromRGB(54, 57, 63),
@@ -1447,7 +1447,7 @@ local function createDropdown(parent, label, options, default, callback)
     Create("UICorner", { Parent = dropdown, CornerRadius = UDim.new(0, 6) })
     Create("UIPadding", { Parent = dropdown, PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 30) })
     
-    -- Dropdown arrow
+    
     local arrow = Create("TextLabel", {
         Parent = dropdown,
         BackgroundTransparency = 1,
@@ -1461,7 +1461,7 @@ local function createDropdown(parent, label, options, default, callback)
         TextYAlignment = Enum.TextYAlignment.Center,
     })
     
-    -- Dropdown list container
+    
     local dropdownList = Create("Frame", {
         Parent = frame,
         BackgroundColor3 = Color3.fromRGB(54, 57, 63),
@@ -1476,7 +1476,7 @@ local function createDropdown(parent, label, options, default, callback)
     Create("UIPadding", { Parent = dropdownList, PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) })
     Create("UIListLayout", { Parent = dropdownList, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) })
     
-    -- Shadow effect
+    
     local shadow = Create("Frame", {
         Parent = frame,
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -1489,7 +1489,7 @@ local function createDropdown(parent, label, options, default, callback)
     })
     Create("UICorner", { Parent = shadow, CornerRadius = UDim.new(0, 6) })
     
-    -- Create option buttons
+    
     local optionButtons = {}
     for i, option in ipairs(options) do
         local optionButton = Create("TextButton", {
@@ -1510,13 +1510,13 @@ local function createDropdown(parent, label, options, default, callback)
         
         optionButtons[option] = optionButton
         
-        -- Set initial selection state
+        
         if option == selectedValue then
             optionButton.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
             optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
         
-        -- Hover effects
+        
         optionButton.MouseEnter:Connect(function()
             if option ~= selectedValue then
                 optionButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
@@ -1531,29 +1531,29 @@ local function createDropdown(parent, label, options, default, callback)
             end
         end)
         
-        -- Click handler
+        
         optionButton.MouseButton1Click:Connect(function()
-            -- Update selection
+            
             if selectedValue ~= option then
-                -- Reset previous selection
+                
                 if optionButtons[selectedValue] then
                     optionButtons[selectedValue].BackgroundColor3 = Color3.fromRGB(54, 57, 63)
                     optionButtons[selectedValue].TextColor3 = Color3.fromRGB(220, 221, 222)
                 end
                 
-                -- Set new selection
+                
                 selectedValue = option
                 dropdown.Text = option
                 optionButton.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
                 optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
                 
-                -- Call callback
+                
                 if callback then
                     pcall(callback, option)
                 end
             end
             
-            -- Close dropdown
+            
             dropdownList.Visible = false
             shadow.Visible = false
             arrow.Text = "▼"
@@ -1563,7 +1563,7 @@ local function createDropdown(parent, label, options, default, callback)
         end)
     end
     
-    -- Hover effects for main dropdown
+    
     dropdown.MouseEnter:Connect(function()
         if not dropdownList.Visible then
             dropdown.BackgroundColor3 = Color3.fromRGB(64, 68, 75)
@@ -1580,7 +1580,7 @@ local function createDropdown(parent, label, options, default, callback)
         end
     end)
     
-    -- Main dropdown click handler
+    
     dropdown.MouseButton1Click:Connect(function()
         local isOpening = not dropdownList.Visible
         
@@ -1588,13 +1588,13 @@ local function createDropdown(parent, label, options, default, callback)
         shadow.Visible = isOpening
         
         if isOpening then
-            -- Opening dropdown
+            
             dropdown.BackgroundColor3 = Color3.fromRGB(64, 68, 75)
             dropdown.BorderColor3 = Color3.fromRGB(114, 137, 218)
             arrow.TextColor3 = Color3.fromRGB(114, 137, 218)
             arrow.Text = "▲"
             
-            -- Ensure proper selection highlighting
+            
             for option, button in pairs(optionButtons) do
                 if option == selectedValue then
                     button.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
@@ -1605,7 +1605,7 @@ local function createDropdown(parent, label, options, default, callback)
                 end
             end
         else
-            -- Closing dropdown
+            
             dropdown.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
             dropdown.BorderColor3 = Color3.fromRGB(72, 75, 81)
             arrow.TextColor3 = Color3.fromRGB(185, 187, 190)
@@ -1613,7 +1613,7 @@ local function createDropdown(parent, label, options, default, callback)
         end
     end)
     
-    -- Close dropdown function
+    
     local function closeDropdown()
         if dropdownList.Visible then
             dropdownList.Visible = false
@@ -1625,13 +1625,13 @@ local function createDropdown(parent, label, options, default, callback)
         end
     end
     
-    -- Outside click detection
+    
     local connection
     connection = UserInputService.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 and dropdownList.Visible then
             local mousePos = UserInputService:GetMouseLocation()
             
-            -- Check if click is outside dropdown elements
+            
             local function isPointInFrame(point, frame)
                 local pos = frame.AbsolutePosition
                 local size = frame.AbsoluteSize
@@ -1645,7 +1645,7 @@ local function createDropdown(parent, label, options, default, callback)
         end
     end)
     
-    -- Clean up connection when frame is destroyed
+    
     frame.AncestryChanged:Connect(function()
         if not frame.Parent then
             if connection then
@@ -1965,7 +1965,7 @@ createToggle(aimbotContent, "Aimbot", function(enabled)
     end
 end)
 
--- AimeView toggle
+
 local aimeViewEnabled = false
 createToggle(aimbotContent, "AimeView", function(enabled)
     aimeViewEnabled = enabled
@@ -2017,7 +2017,7 @@ local function createKeybindPicker(parent, label, default, callback)
     Create("UICorner", { Parent = keyButton, CornerRadius = UDim.new(0, 6) })
     Create("UIPadding", { Parent = keyButton, PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) })
     
-    -- Quick Right Click button
+    
     local rightClickButton = Create("TextButton", {
         Parent = frame,
         BackgroundColor3 = Color3.fromRGB(114, 137, 218),
@@ -2035,7 +2035,7 @@ local function createKeybindPicker(parent, label, default, callback)
     })
     Create("UICorner", { Parent = rightClickButton, CornerRadius = UDim.new(0, 6) })
     
-    -- Right click button functionality
+    
     rightClickButton.MouseButton1Click:Connect(function()
         if not waitingForKey then
             selectedKey = "Right Click"
@@ -2048,7 +2048,7 @@ local function createKeybindPicker(parent, label, default, callback)
         end
     end)
     
-    -- Right click button hover effects
+    
     rightClickButton.MouseEnter:Connect(function()
         rightClickButton.BackgroundColor3 = Color3.fromRGB(134, 157, 238)
         rightClickButton.BorderColor3 = Color3.fromRGB(134, 157, 238)
@@ -2158,7 +2158,7 @@ Create("TextLabel", {
     TextXAlignment = Enum.TextXAlignment.Left,
 })
 
--- SHADERS TAB START
+
 local Lighting = game:GetService("Lighting")
 local shaderState = { mode = "None" }
 
@@ -2219,7 +2219,7 @@ local function applyMidShaders()
     dof.Parent = Lighting
 end
 
--- NEW: Glossy shader preset
+
 local function applyGlossyShaders()
     clearShaders()
     local cc = Instance.new("ColorCorrectionEffect")
@@ -2259,7 +2259,7 @@ local shaderDropdown = createDropdown(shadersContent, "Mode", {"None", "Ultra Sh
     setShaderMode(option)
 end)
 
--- SHADERS TAB END
+
 
 local movementContent = createSection(mainTabData, "Movement", "#")
 createSlider(movementContent, "Speed", 16, 500, 16, function(value)
@@ -2662,7 +2662,7 @@ local function createPlayerPopup(targetPlayer, parentFrame)
     })
     Create("UICorner", {Parent = popup, CornerRadius = UDim.new(0, 10)})
     
-    -- Discord-style glow behind popup (placed outside to avoid layout interference)
+    
     local glowOffset = 10
     local popupGlow = Create("ImageLabel", {
         Name = "PopupGlow",
@@ -2699,7 +2699,7 @@ local function createPlayerPopup(targetPlayer, parentFrame)
     Create("UICorner", {Parent = whitelistBtn, CornerRadius = UDim.new(0, 4)})
     
 
-    -- Priority button
+    
     local priorityBtn = Create("TextButton", {
         Parent = popup,
         BackgroundColor3 = priorityPlayers[targetPlayer] and Color3.fromRGB(240, 71, 71) or Color3.fromRGB(47, 49, 54),
@@ -2756,7 +2756,7 @@ local function createPlayerPopup(targetPlayer, parentFrame)
         whitelistBtn.Text = whitelistedPlayers[targetPlayer] and "Unwhitelist" or "Whitelist"
         whitelistBtn.BackgroundColor3 = whitelistedPlayers[targetPlayer] and Color3.fromRGB(128, 0, 128) or Color3.fromRGB(47, 49, 54)
 
-        -- If player is whitelisted, remove priority status
+        
         if whitelistedPlayers[targetPlayer] then
             priorityPlayers[targetPlayer] = nil
             if priorityBtn then
@@ -2765,7 +2765,7 @@ local function createPlayerPopup(targetPlayer, parentFrame)
             end
         end
 
-        -- Hide ESP immediately if player is now whitelisted
+        
         if whitelistedPlayers[targetPlayer] and esp.players[targetPlayer] then
             for _, drawing in pairs(esp.players[targetPlayer]) do
                 if drawing and drawing.Visible ~= nil then
@@ -2793,7 +2793,7 @@ local function createPlayerPopup(targetPlayer, parentFrame)
         priorityBtn.Text = priorityPlayers[targetPlayer] and "Unpriority" or "Priority"
         priorityBtn.BackgroundColor3 = priorityPlayers[targetPlayer] and Color3.fromRGB(240, 71, 71) or Color3.fromRGB(47, 49, 54)
 
-        -- Remove from whitelist if now priority
+        
         if priorityPlayers[targetPlayer] and whitelistedPlayers[targetPlayer] then
             whitelistedPlayers[targetPlayer] = nil
             whitelistBtn.Text = "Whitelist"
@@ -2864,7 +2864,7 @@ local function createPlayerPopup(targetPlayer, parentFrame)
     
     playerPopups[targetPlayer] = popup
 
-    -- Keep glow aligned with popup position/size
+    
     popup:GetPropertyChangedSignal("Position"):Connect(function()
         popupGlow.Position = UDim2.new(popup.Position.X.Scale, popup.Position.X.Offset - glowOffset,
                                        popup.Position.Y.Scale, popup.Position.Y.Offset - glowOffset)
@@ -2874,7 +2874,7 @@ local function createPlayerPopup(targetPlayer, parentFrame)
                                    popup.Size.Y.Scale, popup.Size.Y.Offset + glowOffset*2)
     end)
 
-    -- Destroy glow when popup is destroyed
+    
     popup.Destroying:Connect(function()
         if popupGlow and popupGlow.Parent then
             popupGlow:Destroy()
@@ -2894,7 +2894,7 @@ local function addPlayer(player)
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 32),
     })
-    entry.Name = player.Name  -- for search convenience
+    entry.Name = player.Name  
 
     local headshot = Create("ImageLabel", {
         Parent = entry,
@@ -2906,7 +2906,7 @@ local function addPlayer(player)
 
     local statusDot = Create("Frame", {
         Parent = entry,
-        BackgroundColor3 = Color3.fromRGB(67, 181, 129), -- default green
+        BackgroundColor3 = Color3.fromRGB(67, 181, 129), 
         Size = UDim2.new(0, 12, 0, 12),
         Position = UDim2.new(0, 28, 0.5, -6),
     })
@@ -2966,16 +2966,16 @@ local function addPlayer(player)
 end
 
 local function removePlayer(player)
-    -- Remove the leaderboard UI entry
+    
     if playerEntries[player] then
         playerEntries[player]:Destroy()
         playerEntries[player] = nil
     end
 
-    -- Clean up status dot mapping (entry destruction handles instance removal)
+    
     statusFrames[player] = nil
 
-    -- Remove last movement timestamp
+    
     lastMove[player] = nil
 end
 
@@ -3014,7 +3014,7 @@ RunService.Heartbeat:Connect(function()
         end
     end
 
-    -- Continuously update speed and fly
+    
     if speedEnabled then
         updateSpeed()
     end
@@ -3026,7 +3026,7 @@ end)
 
 
 Players.LocalPlayer.CharacterAdded:Connect(function()
-    -- Clean up old speedVelocity if it exists
+    
     if speedVelocity then
         speedVelocity:Destroy()
         speedVelocity = nil
@@ -3040,7 +3040,7 @@ Players.LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
--- Clean up when the script stops
+
 game:GetService("Players").LocalPlayer.CharacterRemoving:Connect(function()
     if speedVelocity then
         speedVelocity:Destroy()
@@ -3051,7 +3051,7 @@ end)
 
 
 
--- Initialize speed on startup
+
 updateSpeed()
 
 print("gzcord - Functional Version Loaded!")
@@ -3059,7 +3059,7 @@ print("Aimbot: " .. aimbotKeybind .. " to activate")
 print("ESP: Toggle in Visuals section")
 print("Movement: Adjust speed, fly, and jump in Movement section")
 
--- SHADER LOGIC (keep these functions)
+
 local Lighting = game:GetService("Lighting")
 local function clearShaders()
     for _, v in ipairs(Lighting:GetChildren()) do
@@ -3116,8 +3116,8 @@ local function applyMidShaders()
     dof.Parent = Lighting
 end
 
--- Remove shaders section from mainTabData if present
--- Add a new shadersTabData for the shaders tab
+
+
 local shadersTabData = { sections = {} }
 local shadersSection = createSection(shadersTabData, "Shaders", "✨")
 
@@ -3153,7 +3153,7 @@ for i, mode in ipairs(shaderModes) do
         TextColor3 = Color3.fromRGB(220, 221, 222),
         TextSize = 16,
         AutoButtonColor = true,
-        LayoutOrder = i + 2, -- shift order so buttons come after description block
+        LayoutOrder = i + 2, 
     })
     Create("UICorner", {Parent = btn, CornerRadius = UDim.new(0, 6)})
     Create("UIPadding", {Parent = btn, PaddingLeft = UDim.new(0, 10)})
@@ -3169,12 +3169,12 @@ for i, mode in ipairs(shaderModes) do
         mode.func()
     end)
 end
--- Set default active shader visually
+
 shaderButtons["No Shaders"].BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 shaderButtons["No Shaders"].TextColor3 = Color3.fromRGB(255, 255, 255)
 activeShader = "No Shaders"
 
--- Add a shaders tab button to the sidebar before settings
+
 local shadersTabButton = Create("TextButton", {
     Name = "ShadersTab",
     Parent = tabColumn,
@@ -3194,12 +3194,12 @@ shadersTabButton.MouseButton1Click:Connect(function()
     setActiveTab(shadersTabButton, shadersTabData)
 end)
 
--- Adjust layout orders for main/settings tabs
+
 mainTabButton.LayoutOrder = 1
 shadersTabButton.LayoutOrder = 4
 settingsTabButton.LayoutOrder = 5
 
--- Remove any 'Shaders' section from mainTabData if present
+
 for i = #mainTabData.sections, 1, -1 do
     if mainTabData.sections[i].button.Name == "Shaders" then
         mainTabData.sections[i].button:Destroy()
@@ -3210,7 +3210,7 @@ for i = #mainTabData.sections, 1, -1 do
     end
 end
 
--- Search box for player list
+
 local searchBox = Create("TextBox", {
     Name = "SearchBox",
     Parent = leaderboardColumn,
@@ -3241,11 +3241,11 @@ searchBox:GetPropertyChangedSignal("Text"):Connect(function()
     end
 end)
 
--- Move leaderboard scroll below search box
+
 lbScroll.Position = UDim2.new(0, 0, 0, 88)
 lbScroll.Size = UDim2.new(1, 0, 1, -88)
 
--- Ultra Shaders button
+
 local ultraBtn = Create("TextButton", {
     Parent = shadersContent,
     BackgroundColor3 = Color3.fromRGB(47, 49, 54),
@@ -3270,7 +3270,7 @@ local ultraDesc = Create("TextLabel", {
     TextSize = 14,
 })
 
--- Mid Shaders button
+
 local midBtn = Create("TextButton", {
     Parent = shadersContent,
     BackgroundColor3 = Color3.fromRGB(47, 49, 54),
@@ -3296,7 +3296,7 @@ local midDesc = Create("TextLabel", {
     TextSize = 14,
 })
 
--- No Shaders button
+
 local noShadersBtn = Create("TextButton", {
     Parent = shadersContent,
     BackgroundColor3 = Color3.fromRGB(47, 49, 54),
@@ -3322,7 +3322,7 @@ local noShadersDesc = Create("TextLabel", {
     TextSize = 14,
 })
 
--- Track active shader
+
 local activeShaderBtn = nil
 
 local function setActiveShader(btn)
@@ -3390,7 +3390,7 @@ noShadersBtn.MouseButton1Click:Connect(function()
     setActiveShader(nil)
 end)
 
--- Apply initial transparency & scale after UI creation
+
 task.defer(function()
     windowFrame.BackgroundTransparency = guiSettings.transparency
     applyTransparencyToAll(windowFrame, guiSettings.transparency)
@@ -3400,10 +3400,10 @@ task.defer(function()
     scaleAllElements(windowFrame, guiSettings.scale, originalSizes)
 end)
 
--- CONFIGS SECTION ---------------------------------------------------
+
 local configsContent = createSection(settingsTabData, "Configs", "💾")
 
--- UI elements
+
 local configRow = Create("Frame", {
     Parent = configsContent,
     BackgroundTransparency = 1,
@@ -3457,7 +3457,7 @@ local loadBtn = Create("TextButton", {
 })
 Create("UICorner", {Parent = loadBtn, CornerRadius = UDim.new(0, 4)})
 
--- Helper to get serializable snapshot
+
 local function getConfigSnapshot()
     local espCopy = {}
     for k, v in pairs(esp) do
@@ -3481,11 +3481,11 @@ local function getConfigSnapshot()
     }
 end
 
--- Apply loaded config
+
 local function applyConfig(cfg)
     if not cfg or typeof(cfg) ~= "table" then return end
 
-    -- Basic fields
+    
     aimbotSmoothness = cfg.aimbotSmoothness or aimbotSmoothness
     aimbotPrediction = cfg.aimbotPrediction or aimbotPrediction
     aimbotKeybind = cfg.aimbotKeybind or aimbotKeybind
@@ -3525,7 +3525,7 @@ local function applyConfig(cfg)
     if antiLockEnabled then startAntiLock() else stopAntiLock() end
 end
 
--- File helpers
+
 local configFolder = "gzcord_configs"
 if pcall(function() return isfolder and not isfolder(configFolder) end) then
     makefolder(configFolder)
